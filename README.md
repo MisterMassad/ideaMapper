@@ -1,5 +1,30 @@
 # MindMapProject
 
+# Updates:
+
+1. The project now fully works using Supabase and not Firebase. The whole task of this project was to do Firebase to Supabase migration.
+
+# Problems Fixed and Updates:
+
+1. Re-designed the sign up and login page. Made the signup/login GUI user friendly and up-to-date using CSS.
+2. Migrated the whole project from Firebase to Supabase, which includes:
+   1) Migrated Authentication
+   2) Migrated User tables and information
+   3) Migrated all map tables
+   4) Migrated creating, editing, and map deletion
+   5) Migrated and improved real-time as part of the project.
+3. Fixed the continuous mouse updates in Realtime. Whenever a user moves his mouse, a great sheer amount of updates (thousands of updates per mouse move) were sent to the Realtime database, which caused using too much quota.
+Mouse updates are now less frequent, and much smoother than before.
+4. Add restrictions for editors to delete the owner's map. In the original project, editors whom joined a certain mindmap, can easily delete it and it would delete the entire mindmap from the database which would also delete it for the owner.
+   1) Added a restriction that only the owner can delete a map he created.
+   2) Added a restriction that editors cannot try and delete a map they didn't create.
+5. Added a demo feature, "Online" and "Offline" feature for users. A user can now check who's currently inside his map. If x amount of users are joined in one map, then there's a participants list that shows all users.
+   1) Added "Online" tag, for users that are currently inside the current map.
+   2) Users appear "Online" iff the user is inside the current map.
+   3) A user would appear "Offline" if he's not in the current map, regardless if he's Online on the App/Website.
+   4) Not yet implemented in Realtime.
+
+
 ## Background and Motivation
 
  This project was developed as part of my studies for my degree at the university of Haifa, under the supervision of Professor Roi Poranne  and Professor Yotam Hod. The goal of MindMapProject is to create an interactive real-time mind mapping tool that enables users to visually organize their thoughts, structure ideas, and collaborate efficiently.
