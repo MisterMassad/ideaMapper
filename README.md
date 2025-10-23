@@ -1,5 +1,9 @@
 # MindMapProject
 
+<img width="2531" height="1304" alt="Main_page_1" src="https://github.com/user-attachments/assets/1d1d3644-6449-4be9-b44d-67a8ef69d474" />
+
+<img width="2010" height="1308" alt="Dashboard_page_1" src="https://github.com/user-attachments/assets/a1141fa2-4068-4ae9-aa30-8230a5a53c88" />
+
 # Updates:
 
 1. The project now fully works using Supabase and not Firebase. The whole task of this project was to do Firebase to Supabase migration.
