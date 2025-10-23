@@ -97,6 +97,25 @@ Logout and Password Reset : Options for users to log out and reset their passwor
 The project is now migrated to Supabase. Meaning, we don't need Firebase to run the project.
 You need to setup *Supabase*.
 
+### Step 1: Clone the repo:
+1. From your cmd, in your chosen location, clone the repository using "git clone https://github.com/MisterMassad/ideaMapper"
+2. Install the necessary dependencies for React and Supabase: "npm install" in the root.
+   1. Additionally, do the following:
+      1. "cd server" -> "npm install"
+      2. "cd client" -> "npm install"
+
+cd ideaMapper/server
+npm install
+npm start
+
+# new terminal
+cd ../client
+npm install
+npm start
+
+
+### Step 2: Setup Supabase
+
 1. Go to your Supabase console.
 2. Create a new project (Dashboard -> New Project).
 3. Open the SQL Editor in your Supabase project. (You can find it in the left menu)
@@ -114,42 +133,12 @@ You need to setup *Supabase*.
    3. Open the supabaseClient.js file. ("client\src\supabaseClient.js")
    4. Copy and paste your anon public key.
 
-## Firebase
-We used Firebase as our backend, in order to run our project, you need to setup *Firebase*:
+### Step 3: Run the project
 
-1. Go to the Firebase Console and create a new project.
-2. In the Project Settings, navigate to the General tab and register your app -> choose Web as the platform.
-3. Get Your Firebase Service Account Key:
-Navigate to Project Settings,Go to the Service accounts tab-> Click Generate new private key under the Firebase Admin SDK section:
-then a JSON file will be downloaded to your computer. 
-"we will use this file later ".
+1. Run the server first using "npm start"
+2. Run the client using "npm start"
 
-Enable Firebase Services:
-1. Firebase Authentication is used to manage user sign-ups, logins, and authentication state.<br>
-In the Firebase Console, go to the Authentication section and enable the Email/Password sign-in methods.
-2. Cloud Firestore:<br>
-Go to Firestore Database and Create a new database.
-3. Realtime Database:<br>
-Go to Realtime Database and click Create Database.<br>
-Set the database rules to allow necessary read/write access (public access).
-
-## Run the project:
-After you set up Firebase, you can follow these steps to run the project:
-
-1. Clone the Repository: (https://github.com/IsraaBsoul/MindMapProject.git)<br>
-Then, open the project and update the Firebase configuration:<br>
-   a. Open the file: firebaseConfig -> server\config\firebaseConfig.js, <br>
-   and replace the placeholder path with the path to your downloaded JSON file->const serviceAccount = require("path/to/your/firebase-key.json");
-
-   b. Go to the Firebase Console for your project-> navigate to Project Settings-> Scroll down to the "Your apps" section <br>
-   then copy your Firebase configuration values, and replace the existing values in the `client\src\firebase.js` file with your own configuration.
-
-2. Install necessary packages for React and Firebase: npm install
-3. Navigate to the Project Directory: cd MindMapProject
-4. Run the Application:<br>
-You should run the server first-> Open a terminal and navigate to the server directory: cd server -> Then start the server: npm start.<br>
-Open another terminal and navigate to the client directory: cd client-> Then start the client: npm start.<br>
-*DONE :)*
+## You're done! Happy coding!
 ![image](https://github.com/user-attachments/assets/49893958-7f81-4962-babe-63924c6a28e2)
 
  ![image](https://github.com/user-attachments/assets/24b94d77-3dfc-4a07-b58f-5ca7a96d3cce)
