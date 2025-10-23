@@ -19,6 +19,32 @@ const LoginPage = ({ onLogin }) => {
   const [showReset, setShowReset] = useState(false);
   const [error, setError] = useState("");
 
+  // ROTATING TITLE
+  // === Rotating title setup ===
+  const messages = [
+    "IdeaMapper",
+    "Your ideas are safe here!",
+    "Map. Learn. Grow.",
+  ];
+
+  const resetMessages = [
+    "Forgot your password?",
+    "No worries!",
+    "We got you covered!",
+  ];
+
+  const [titleIndex, setTitleIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTitleIndex((i) => (i + 1) % messages.length);
+    }, 3200); // switch every 3.2 seconds
+    return () => clearInterval(id);
+  }, []);
+
+  const title = messages[titleIndex];
+
+  // ROTATING TITLE END
   const defaultProfilePicture =
     "https://example.com/default-profile-picture.png";
 
@@ -157,6 +183,15 @@ const LoginPage = ({ onLogin }) => {
   if (showReset) {
     return (
       <div className="login-container">
+        {/* Title outside the form with glow/glitch effect */}
+        <h1
+          className={`app-title rot-${titleIndex % 2}`}
+          data-text={showReset ? resetMessages[titleIndex % resetMessages.length] : title}
+          aria-live="polite"
+        >
+          {showReset ? resetMessages[titleIndex % resetMessages.length] : title}
+        </h1>
+
         <div className="login-form">
           <h2>Reset Password</h2>
           <p className="subtitle">Enter your email to receive a reset link</p>
@@ -169,11 +204,13 @@ const LoginPage = ({ onLogin }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder=" "
+                autoComplete="email"
+                inputMode="email"
               />
               <span>Email</span>
             </label>
 
-            {error && <p className="error-message shake">{error}</p>}
+            {error && <p className="error-message shake" role="alert">{error}</p>}
 
             <button type="submit" className="login-button">
               Send Reset Email
@@ -193,6 +230,16 @@ const LoginPage = ({ onLogin }) => {
   // ===== Login / Sign Up View =====
   return (
     <div className="login-container">
+      {/* Title outside the form with glow/glitch effect */}
+      <h1
+        className={`app-title rot-${titleIndex % 2}`}
+        data-text={title}
+        aria-live="polite"
+      >
+        {title}
+      </h1>
+
+
       <div className="login-form">
         <h2>{isLogin ? "Welcome to IdeaMapper" : "Sign Up"}</h2>
         <p className="subtitle">
@@ -210,6 +257,7 @@ const LoginPage = ({ onLogin }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 placeholder=" "
+                autoComplete="username"
               />
               <span>Username</span>
             </label>
@@ -222,6 +270,8 @@ const LoginPage = ({ onLogin }) => {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder=" "
+              autoComplete="email"
+              inputMode="email"
             />
             <span>Email</span>
           </label>
@@ -233,6 +283,7 @@ const LoginPage = ({ onLogin }) => {
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder=" "
+              autoComplete={isLogin ? "current-password" : "new-password"}
             />
             <span>Password</span>
           </label>
@@ -249,7 +300,7 @@ const LoginPage = ({ onLogin }) => {
             </label>
           )}
 
-          {error && <p className="error-message shake">{error}</p>}
+          {error && <p className="error-message shake" role="alert">{error}</p>}
 
           {/* Side-by-side buttons */}
           <div className="button-row">
