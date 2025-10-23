@@ -93,7 +93,6 @@ Logout and Password Reset : Options for users to log out and reset their passwor
 
 ## Installation and Setup
 
-## Supabase Setup
 The project is now migrated to Supabase. Meaning, we don't need Firebase to run the project.
 You need to setup *Supabase*.
 
@@ -103,15 +102,6 @@ You need to setup *Supabase*.
    1. Additionally, do the following:
       1. "cd server" -> "npm install"
       2. "cd client" -> "npm install"
-
-cd ideaMapper/server
-npm install
-npm start
-
-# new terminal
-cd ../client
-npm install
-npm start
 
 
 ### Step 2: Setup Supabase
