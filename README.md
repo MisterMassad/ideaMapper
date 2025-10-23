@@ -6,7 +6,6 @@
 
 # Problems Fixed and Updates:
 
-1. Re-designed the sign up and login page. Made the signup/login GUI user friendly and up-to-date using CSS.
 1. Redesigned login/signup page. Made the GUI user friendly and added animations to the login page.
 2. Reimagined the dashboard page. Made the UI user friendly. 
 3. Migrated the whole project from Firebase to Supabase, which includes:
