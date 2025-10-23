@@ -7,18 +7,20 @@
 # Problems Fixed and Updates:
 
 1. Re-designed the sign up and login page. Made the signup/login GUI user friendly and up-to-date using CSS.
-2. Migrated the whole project from Firebase to Supabase, which includes:
+1. Redesigned login/signup page. Made the GUI user friendly and added animations to the login page.
+2. Reimagined the dashboard page. Made the UI user friendly. 
+3. Migrated the whole project from Firebase to Supabase, which includes:
    1) Migrated Authentication
    2) Migrated User tables and information
    3) Migrated all map tables
    4) Migrated creating, editing, and map deletion
    5) Migrated and improved real-time as part of the project.
-3. Fixed the continuous mouse updates in Realtime. Whenever a user moves his mouse, a great sheer amount of updates (thousands of updates per mouse move) were sent to the Realtime database, which caused using too much quota.
+4. Fixed the continuous mouse updates in Realtime. Whenever a user moves his mouse, a great sheer amount of updates (thousands of updates per mouse move) were sent to the Realtime database, which caused using too much quota.
 Mouse updates are now less frequent, and much smoother than before.
-4. Add restrictions for editors to delete the owner's map. In the original project, editors whom joined a certain mindmap, can easily delete it and it would delete the entire mindmap from the database which would also delete it for the owner.
+5. Add restrictions for editors to delete the owner's map. In the original project, editors whom joined a certain mindmap, can easily delete it and it would delete the entire mindmap from the database which would also delete it for the owner.
    1) Added a restriction that only the owner can delete a map he created.
    2) Added a restriction that editors cannot try and delete a map they didn't create.
-5. Added a demo feature, "Online" and "Offline" feature for users. A user can now check who's currently inside his map. If x amount of users are joined in one map, then there's a participants list that shows all users.
+6. Added a demo feature, "Online" and "Offline" feature for users. A user can now check who's currently inside his map. If x amount of users are joined in one map, then there's a participants list that shows all users.
    1) Added "Online" tag, for users that are currently inside the current map.
    2) Users appear "Online" iff the user is inside the current map.
    3) A user would appear "Offline" if he's not in the current map, regardless if he's Online on the App/Website.
@@ -90,6 +92,13 @@ Logout and Password Reset : Options for users to log out and reset their passwor
 
 
 ## Installation and Setup
+
+## Supabase Setup
+The project is now migrated to Supabase. Meaning, we don't need Firebase to run the project.
+You need to setup *Supabase*.
+
+1. Go to your Supabase console.
+2. Create a new project.
 
 ## Firebase
 We used Firebase as our backend, in order to run our project, you need to setup *Firebase*:
