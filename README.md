@@ -98,7 +98,21 @@ The project is now migrated to Supabase. Meaning, we don't need Firebase to run 
 You need to setup *Supabase*.
 
 1. Go to your Supabase console.
-2. Create a new project.
+2. Create a new project (Dashboard -> New Project).
+3. Open the SQL Editor in your Supabase project. (You can find it in the left menu)
+4. Open the file: "supabase/migrations/20251023180322_remote_schema.sql" and copy the *entire* file.
+5. Paste the file contents in teh SQL  editor, and click *Run* or alternatively, press "CTRL + ENTER".
+6. Find your API keys and Project ID:
+   1. Navigate to Project settings form the left menu, then navigate to "General".
+   2. Find your project ID, and copy it.
+   3. Open the supabaseClient.js file. ("client\src\supabaseClient.js")
+   4. Put your project ID as follows:
+   https://<PROJECT_ID>.supabase.co
+   (Don't include <> around the PROJECT_ID)
+   5. Navigate to Project Settings from the Left Menu. (Press the settings icon)
+   6. Find and navigate to API Keys. (Link: https://supabase.com/dashboard/project/mfljgxvjzvlolkalkxsh/settings/api-keys)
+   3. Open the supabaseClient.js file. ("client\src\supabaseClient.js")
+   4. Copy and paste your anon public key.
 
 ## Firebase
 We used Firebase as our backend, in order to run our project, you need to setup *Firebase*:
