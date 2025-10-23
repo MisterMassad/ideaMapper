@@ -134,6 +134,16 @@ You need to setup *Supabase*.
 2. Run the client using "npm start"
 
 ## You're done! Happy coding!
+
+## Common Problems:
+- You need to install dependencies in the:
+     - The root directory
+     - Server
+     - Client
+ 
+- If you can run the server, but not the client, then the dependencies weren't installed correctly in the client:
+   - You can re run npm install inside the client.
+   - A common error is that react scripts are not found, you can fix using: "npm install react-scripts@5.0.1 --save"
 ![image](https://github.com/user-attachments/assets/49893958-7f81-4962-babe-63924c6a28e2)
 
  ![image](https://github.com/user-attachments/assets/24b94d77-3dfc-4a07-b58f-5ca7a96d3cce)
