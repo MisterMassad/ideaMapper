@@ -1,5 +1,16 @@
 # MindMapProject
 
+## Setup and Installation Tutorial - 2.5 minutes tutorial to setup the project successfully 
+
+https://github.com/user-attachments/assets/68bbaec1-5062-457c-93e4-39e7b8d68137
+
+
+<img width="2531" height="1304" alt="Main_page_1" src="https://github.com/user-attachments/assets/1d1d3644-6449-4be9-b44d-67a8ef69d474" />
+
+<img width="1488" height="1014" alt="Sign_up_page_1" src="https://github.com/user-attachments/assets/99d2e672-c878-44c2-aed3-4e88f5bb562c" />
+
+<img width="2010" height="1308" alt="Dashboard_page_1" src="https://github.com/user-attachments/assets/a1141fa2-4068-4ae9-aa30-8230a5a53c88" />
+
 # Updates:
 
 1. The project now fully works using Supabase and not Firebase. The whole task of this project was to do Firebase to Supabase migration.
@@ -128,6 +139,16 @@ You need to setup *Supabase*.
 2. Run the client using "npm start"
 
 ## You're done! Happy coding!
+
+## Common Problems:
+- You need to install dependencies in the:
+     - The root directory
+     - Server
+     - Client
+ 
+- If you can run the server, but not the client, then the dependencies weren't installed correctly in the client:
+   - You can re run npm install inside the client.
+   - A common error is that react scripts are not found, you can fix using: "npm install react-scripts@5.0.1 --save"
 ![image](https://github.com/user-attachments/assets/49893958-7f81-4962-babe-63924c6a28e2)
 
  ![image](https://github.com/user-attachments/assets/24b94d77-3dfc-4a07-b58f-5ca7a96d3cce)
