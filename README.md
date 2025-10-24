@@ -35,7 +35,9 @@ Mouse updates are now less frequent, and much smoother than before.
    - Users appear "Online" iff the user is inside the current map.
    - A user would appear "Offline" if he's not in the current map, regardless if he's Online on the App/Website.
    - Not yet implemented in Realtime.
-- Added email confirmation before login.3
+- Added email confirmation before login. No session accesss before confirming your email.
+- Added a password reset functionality. (Password reset was a placeholder in the original Firebase project).
+   - Users can now reset their passwords.
 
 ## Background and Motivation
 
@@ -149,11 +151,5 @@ You need to setup *Supabase*.
 - If you can run the server, but not the client, then the dependencies weren't installed correctly in the client:
    - You can re run npm install inside the client.
    - A common error is that react scripts are not found, you can fix using: "npm install react-scripts@5.0.1 --save"
-![image](https://github.com/user-attachments/assets/49893958-7f81-4962-babe-63924c6a28e2)
-
- ![image](https://github.com/user-attachments/assets/24b94d77-3dfc-4a07-b58f-5ca7a96d3cce)
-
-
-
 
 
