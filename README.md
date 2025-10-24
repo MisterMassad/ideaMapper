@@ -24,7 +24,7 @@ Mouse updates are now less frequent, and much smoother than before.
    - Users appear "Online" iff the user is inside the current map.
    - A user would appear "Offline" if he's not in the current map, regardless if he's Online on the App/Website.
    - Not yet implemented in Realtime.
-
+- Added email confirmation before login.3
 
 ## Background and Motivation
 
@@ -86,8 +86,8 @@ Logout and Password Reset : Options for users to log out and reset their passwor
 
 ##  Tech Stack
 - React (JavaScript, HTML, CSS) 
-- Firebase (Authentication, Firestore, Realtime Database)  
-- Development Tools:Visual Studio Code, Git & GitHub  
+- Supabase (Authentication, Database, Realtime, RLS)  
+- Development Tools: VSCode, Photoshop for designs, Git, Github
 
 
 ## Installation and Setup
