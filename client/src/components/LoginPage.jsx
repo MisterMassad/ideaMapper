@@ -1,4 +1,4 @@
-// LoginPage.jsx (Supabase version, sends reset email to /reset-password)
+// LoginPage.jsx (Supabase version, adds Magic Link login + sends reset email to /reset-password)
 import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import { supabase } from "../supabaseClient";
@@ -67,7 +67,7 @@ const LoginPage = ({ onLogin }) => {
     return (data?.length ?? 0) > 0;
   };
 
-  // LOGIN
+  // LOGIN (email + password)
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -125,6 +125,29 @@ const LoginPage = ({ onLogin }) => {
     } catch (err) {
       console.error("Signup error:", err);
       setError(err.message || "Sign up failed");
+    }
+  };
+
+  // MAGIC LINK (one-time link)
+  const handleMagicLink = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!email) {
+      setError("Please enter your email to get a magic link.");
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          // Redirect back to your app (router/session listener will log them in)
+          emailRedirectTo: `${window.location.origin}`,
+        },
+      });
+      if (error) throw error;
+      alert("Magic link sent! Check your inbox to log in instantly.");
+    } catch (err) {
+      setError(err.message || "Failed to send magic link.");
     }
   };
 
@@ -273,6 +296,10 @@ const LoginPage = ({ onLogin }) => {
           <div className="links">
             <button className="linklike" onClick={() => setShowReset(true)}>
               Forgot Password?
+            </button>
+            {/* Magic Link trigger */}
+            <button className="linklike" onClick={handleMagicLink} style={{ marginLeft: 12 }}>
+              Get one-time login link
             </button>
           </div>
         )}
