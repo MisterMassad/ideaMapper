@@ -35,7 +35,9 @@ Mouse updates are now less frequent, and much smoother than before.
    - Users appear "Online" iff the user is inside the current map.
    - A user would appear "Offline" if he's not in the current map, regardless if he's Online on the App/Website.
    - Not yet implemented in Realtime.
-- Added email confirmation before login.3
+- Added email confirmation before login. No session accesss before confirming your email.
+- Added a password reset functionality. (Password reset was a placeholder in the original Firebase project).
+   - Users can now reset their passwords.
 
 ## Background and Motivation
 
@@ -132,11 +134,6 @@ You need to setup *Supabase*.
    6. Find and navigate to API Keys. (Link: https://supabase.com/dashboard/project/mfljgxvjzvlolkalkxsh/settings/api-keys)
    3. Open the supabaseClient.js file. ("client\src\supabaseClient.js")
    4. Copy and paste your anon public key.
-
-7. To enable reset password functionality:
-   1. Go to Supabase Authentication tab.
-   2. Press on URL
-   3. Add redirect URL "http://localhost:3000/reset-password" in the Additional URL Redirects.
 
 ### Step 3: Run the project
 
