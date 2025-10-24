@@ -1,4 +1,4 @@
-// LoginPage.jsx (Supabase version, safe username check)
+// LoginPage.jsx (Supabase version, sends reset email to /reset-password)
 import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import { supabase } from "../supabaseClient";
@@ -19,34 +19,20 @@ const LoginPage = ({ onLogin }) => {
   const [showReset, setShowReset] = useState(false);
   const [error, setError] = useState("");
 
-  // ROTATING TITLE
-  // === Rotating title setup ===
-  const messages = [
-    "IdeaMapper",
-    "Your ideas are safe here!",
-    "Map. Learn. Grow.",
-  ];
-
-  const resetMessages = [
-    "Forgot your password?",
-    "No worries!",
-    "We got you covered!",
-  ];
-
+  // Rotating title
+  const messages = ["IdeaMapper", "Your ideas are safe here!", "Map. Learn. Grow."];
+  const resetMessages = ["Forgot your password?", "No worries!", "We got you covered!"];
   const [titleIndex, setTitleIndex] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => {
       setTitleIndex((i) => (i + 1) % messages.length);
-    }, 3200); // switch every 3.2 seconds
+    }, 3200);
     return () => clearInterval(id);
   }, []);
-
   const title = messages[titleIndex];
 
-  // ROTATING TITLE END
-  const defaultProfilePicture =
-    "https://example.com/default-profile-picture.png";
+  const defaultProfilePicture = "https://example.com/default-profile-picture.png";
 
   useEffect(() => {
     socket.on("map_updated", (data) => {
@@ -59,7 +45,7 @@ const LoginPage = ({ onLogin }) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onloadend = () => setProfilePicture(reader.result); // base64 for now
+      reader.onloadend = () => setProfilePicture(reader.result);
       reader.readAsDataURL(file);
     } else {
       setError("Please upload a valid image file.");
@@ -72,12 +58,10 @@ const LoginPage = ({ onLogin }) => {
     setShowReset(false);
   };
 
-  // Helper: check if username is taken (NO empty-string UUID issue)
+  // Helper: check if username is taken
   const isUsernameTaken = async (name, myId) => {
     let query = supabase.from("profiles").select("id").eq("username", name).limit(1);
-    if (myId) {
-      query = query.neq("id", myId); // only exclude self if we have a real UUID
-    }
+    if (myId) query = query.neq("id", myId);
     const { data, error } = await query;
     if (error) throw error;
     return (data?.length ?? 0) > 0;
@@ -88,16 +72,11 @@ const LoginPage = ({ onLogin }) => {
     e.preventDefault();
     setError("");
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
       const user = data.user;
-      if (user?.email) {
-        socket.emit("user_logged_in", { email: user.email });
-      }
+      if (user?.email) socket.emit("user_logged_in", { email: user.email });
 
       onLogin && onLogin();
     } catch (err) {
@@ -110,30 +89,23 @@ const LoginPage = ({ onLogin }) => {
     e.preventDefault();
     setError("");
     try {
-      // (1) Client-side username check
       const cleanUsername = (username || "").trim();
-      if (!cleanUsername) {
-        throw new Error("Please choose a username.");
-      }
+      if (!cleanUsername) throw new Error("Please choose a username.");
       const taken = await isUsernameTaken(cleanUsername);
-      if (taken) {
-        throw new Error("Username is already taken. Please choose another one.");
-      }
+      if (taken) throw new Error("Username is already taken. Please choose another one.");
 
-      // (2) Create auth user
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin, // adjust if you have a custom route
-          data: { username: cleanUsername }, // optional user_metadata
+          emailRedirectTo: window.location.origin, // regular sign-up confirmation
+          data: { username: cleanUsername },
         },
       });
       if (signUpError) throw signUpError;
 
       const user = data.user;
 
-      // (3) If session exists (email confirmations OFF), upsert profile now
       if (data.session && user) {
         const { error: upsertErr } = await supabase.from("profiles").upsert({
           id: user.id,
@@ -148,8 +120,6 @@ const LoginPage = ({ onLogin }) => {
         return;
       }
 
-      // (4) If confirmations ON (no session yet), a profile row is auto-created by trigger.
-      // User will complete profile update after first confirmed login.
       alert("Account created. Please check your inbox to confirm your email, then log in.");
       setIsLogin(true);
     } catch (err) {
@@ -158,7 +128,7 @@ const LoginPage = ({ onLogin }) => {
     }
   };
 
-  // RESET PASSWORD
+  // RESET PASSWORD (send email → /reset-password)
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError("");
@@ -179,17 +149,16 @@ const LoginPage = ({ onLogin }) => {
     }
   };
 
-  // ===== Password Reset View =====
+  // ===== Password Reset (request email) View =====
   if (showReset) {
     return (
       <div className="login-container">
-        {/* Title outside the form with glow/glitch effect */}
         <h1
           className={`app-title rot-${titleIndex % 2}`}
-          data-text={showReset ? resetMessages[titleIndex % resetMessages.length] : title}
+          data-text={resetMessages[titleIndex % resetMessages.length]}
           aria-live="polite"
         >
-          {showReset ? resetMessages[titleIndex % resetMessages.length] : title}
+          {resetMessages[titleIndex % resetMessages.length]}
         </h1>
 
         <div className="login-form">
@@ -230,22 +199,14 @@ const LoginPage = ({ onLogin }) => {
   // ===== Login / Sign Up View =====
   return (
     <div className="login-container">
-      {/* Title outside the form with glow/glitch effect */}
-      <h1
-        className={`app-title rot-${titleIndex % 2}`}
-        data-text={title}
-        aria-live="polite"
-      >
+      <h1 className={`app-title rot-${titleIndex % 2}`} data-text={title} aria-live="polite">
         {title}
       </h1>
-
 
       <div className="login-form">
         <h2>{isLogin ? "Welcome to IdeaMapper" : "Sign Up"}</h2>
         <p className="subtitle">
-          {isLogin
-            ? "Sign in to continue mapping ideas"
-            : "Create your account to start mapping ideas"}
+          {isLogin ? "Sign in to continue mapping ideas" : "Create your account to start mapping ideas"}
         </p>
 
         <form onSubmit={isLogin ? handleLogin : handleSignUp}>
@@ -290,25 +251,15 @@ const LoginPage = ({ onLogin }) => {
 
           {!isLogin && (
             <label className="field floating">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                placeholder=" "
-              />
+              <input type="file" accept="image/*" onChange={handleFileChange} placeholder=" " />
               <span>Profile Picture</span>
             </label>
           )}
 
           {error && <p className="error-message shake" role="alert">{error}</p>}
 
-          {/* Side-by-side buttons */}
           <div className="button-row">
-            <button
-              type="button"
-              className="signup-button"
-              onClick={() => handleSwitchMode(!isLogin)}
-            >
+            <button type="button" className="signup-button" onClick={() => handleSwitchMode(!isLogin)}>
               {isLogin ? "Sign Up" : "Back to Login"}
             </button>
 
@@ -318,7 +269,6 @@ const LoginPage = ({ onLogin }) => {
           </div>
         </form>
 
-        {/* Optional links under buttons */}
         {isLogin && (
           <div className="links">
             <button className="linklike" onClick={() => setShowReset(true)}>
