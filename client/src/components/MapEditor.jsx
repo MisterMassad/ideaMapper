@@ -1,4 +1,5 @@
 // MapEditor.jsx (Supabase version – buffered renaming + safer cursors label)
+// FIX: keep node name as a plain string in data.title; render JSX only at paint time.
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import ReactFlow, {
   addEdge,
@@ -12,6 +13,15 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { supabase } from "../supabaseClient";
 import "../styles/MapEditor.css";
+
+// --- String helpers: single source of truth for node name ---
+const getNodeTitle = (node) =>
+  (node && node.data && typeof node.data.title === "string" ? node.data.title : "") || "";
+
+const setNodeTitle = (node, nextTitle) => ({
+  ...node,
+  data: { ...node.data, title: String(nextTitle ?? ""), isEditing: false },
+});
 
 // --- Small helper UI for context menu ---
 const ContextMenu = ({ onAddNode, onRename, onClose, position }) => {
@@ -143,6 +153,7 @@ const MapEditor = ({ mapId }) => {
     async (newNodes, newEdges) => {
       if (!mapLoaded) return;
       try {
+        // Important: do NOT persist JSX; our nodes state only contains strings in data.title.
         const filteredNodes = (newNodes || []).map((n) => removeUndefined(n));
         const filteredEdges = (newEdges || []).map((e) =>
           removeUndefined({ ...e, style: e.style || {} })
@@ -322,7 +333,7 @@ const MapEditor = ({ mapId }) => {
 
       const newNode = {
         id: newNodeId,
-        data: { label: `Node ${newNodeId}` },
+        data: { title: `Node ${newNodeId}` }, // <-- store plain string ONLY
         position,
         style: { border: `2px solid ${borderColor}` },
         creator: userId,
@@ -352,7 +363,7 @@ const MapEditor = ({ mapId }) => {
   const onNodeDoubleClick = useCallback(
     (_, node) => {
       setEditingNodeId(node.id);
-      setPendingLabel(node.data.label || "");
+      setPendingLabel(getNodeTitle(node)); // <-- read from string field
       setNodes((nds) =>
         nds.map((n) => (n.id === node.id ? { ...n, data: { ...n.data, isEditing: true } } : n))
       );
@@ -366,9 +377,7 @@ const MapEditor = ({ mapId }) => {
     if (!editingNodeId) return;
     setNodes((nds) => {
       const updated = nds.map((n) =>
-        n.id === editingNodeId
-          ? { ...n, data: { ...n.data, label: pendingLabel, isEditing: false } }
-          : n
+        n.id === editingNodeId ? setNodeTitle(n, pendingLabel) : n
       );
       updateMapRow(updated, edges); // single write after edit completes
       return updated;
@@ -454,18 +463,19 @@ const MapEditor = ({ mapId }) => {
     // Save on blur below via updateMapRow
   };
 
-  // Render node label with creator info and date
+  // Render node label with creator info and date (display-only JSX)
   const renderNode = (node) => {
     const creatorInfo = nodeCreators[node.creator];
     const creationDate = new Date(node.creationTimestamp).toLocaleDateString();
     const creatorUsername = creatorInfo?.username || "Unknown Username";
+    const title = getNodeTitle(node);
 
     if (node.data.isEditing) {
       const isThisEditing = node.id === editingNodeId;
       return (
         <input
           type="text"
-          value={isThisEditing ? pendingLabel : node.data.label || ""}
+          value={isThisEditing ? pendingLabel : title}
           onFocus={() => setDisableShortcuts(true)}
           onChange={handleLabelTyping} // local only
           onBlur={() => {
@@ -512,7 +522,7 @@ const MapEditor = ({ mapId }) => {
           )}
           <span>{creatorUsername}</span> ({creationDate})
         </div>
-        <span>{node.data.label}</span>
+        <span>{title}</span>
       </div>
     );
   };
@@ -782,6 +792,7 @@ const MapEditor = ({ mapId }) => {
         <ReactFlow
           nodes={nodes.map((node) => ({
             ...node,
+            // Inject display-only label from current node state
             data: {
               ...node.data,
               label: renderNode(node),
@@ -1266,7 +1277,7 @@ const MapEditor = ({ mapId }) => {
                     boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.1)",
                   }}
                 >
-                  {selectedNode.data.label}
+                  {getNodeTitle(selectedNode)}
                 </div>
               </div>
 

@@ -38,6 +38,7 @@ Mouse updates are now less frequent, and much smoother than before.
 - Added email confirmation before login. No session accesss before confirming your email.
 - Added a password reset functionality. (Password reset was a placeholder in the original Firebase project).
    - Users can now reset their passwords.
+- Added a one-time-login magic link, that allows the user to login in from a link sent directly to his email.
 
 ## Background and Motivation
 

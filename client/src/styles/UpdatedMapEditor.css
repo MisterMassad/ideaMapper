@@ -1,4 +1,4 @@
-/* MapEditor.css — harmonized with Login.css + Dashboard.css */
+MapEditor.css — harmonized with Login.css + Dashboard.css
 
 /* ===== Tokens (reuse your existing root vars) ===== */
 :root{
@@ -66,7 +66,7 @@
   padding:10px 12px; font-size: .98rem;
 }
 
-/* ===== Node card  ===== */
+/* ===== Node card (what renderNode returns) ===== */
 .me-node {
   background: rgba(255,255,255,.9);
   border:1px solid var(--border);
@@ -107,7 +107,7 @@
 /* Color input */
 .me-color{ width:100%; height:40px; border:none; border-radius:12px; cursor:pointer; }
 
-/* ===== Edge & Node sliding drawers ===== */
+/* ===== Edge & Node sliding drawers (reuse panel look) ===== */
 .drawer {
   position:absolute; top:0; right:0; height:100%; width:300px; z-index:6;
   background: rgba(255,255,255,.95); border-left:1px solid rgba(226,232,240,.9);
@@ -150,12 +150,12 @@
   *{ scrollbar-width: thin; scrollbar-color: rgba(148,163,184,.6) transparent; }
 }
 
-/* Interactive node size */
+/* Let React Flow's node grow to the label size */
 .react-flow__node-default {
-  overflow: visible;         
+  overflow: visible;          /* so the meta badge can float above */
 }
 
-/* Interactive pill size */
+/* The pill itself should size to its content */
 .me-node {
   position: relative;
   display: inline-flex;       /* shrink-wrap to content */
@@ -166,15 +166,15 @@
   background: rgba(255,255,255,.9);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-1);
-  box-sizing: border-box;    
-  width: fit-content;         
+  box-sizing: border-box;     /* include padding in size calc */
+  width: fit-content;         /* ensure the node picks its own width */
 }
 
-/* Bold title */
+/* The title looks bold but won’t force extra width unexpectedly */
 .me-node-title {
   font-weight: 800;
   font-size: 1.05rem;
-  white-space: nowrap;     
+  white-space: nowrap;        /* keep it on one line; remove if you want wrapping */
 }
 
 /* Creator badge floats above without changing node size */
@@ -199,23 +199,23 @@
   padding: 10px 12px;
 }
 
-/* Connection handles */
+/* Make connection handles larger & easier to click */
 .react-flow__handle {
-  width: 8px !important;          /* default = 6px, I increased this in the UpdatedMapEditor.css*/
-  height: 8px !important;
-  background: #208800 !important; 
+  width: 14px !important;          /* default is ~6px */
+  height: 14px !important;
+  background: #0ea5e9 !important;  /* cyan to match theme */
   border: 2px solid white !important;
-  box-shadow: 0 0 6px rgba(34, 117, 1, 0.45);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 0 6px rgba(14,165,233,0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Hover grow effect for the connection handles */
+/* Add a hover grow effect so users see feedback */
 .react-flow__handle:hover {
-  transform: scale(2);
-  box-shadow: 0 0 10px rgba(3, 99, 0, 0.6);
+  transform: scale(1.25);
+  box-shadow: 0 0 10px rgba(14,165,233,0.6);
 }
 
-/* For source handles */
+/* Optional: style source vs target differently */
 .react-flow__handle-source {
   background: #22d3ee !important;
 }
