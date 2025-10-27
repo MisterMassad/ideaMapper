@@ -1,4 +1,4 @@
-// LoginPage.jsx (Supabase version, adds Magic Link login + sends reset email to /reset-password)
+// LoginPage.jsx
 import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import { supabase } from "../supabaseClient";
@@ -58,7 +58,7 @@ const LoginPage = ({ onLogin }) => {
     setShowReset(false);
   };
 
-  // Helper: check if username is taken
+  // Helper function to check if the username is taken or not. Usernames are unique.
   const isUsernameTaken = async (name, myId) => {
     let query = supabase.from("profiles").select("id").eq("username", name).limit(1);
     if (myId) query = query.neq("id", myId);
@@ -67,7 +67,7 @@ const LoginPage = ({ onLogin }) => {
     return (data?.length ?? 0) > 0;
   };
 
-  // LOGIN (email + password)
+  // LOGIN (email + password), Google sign in will be added later.
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -89,7 +89,7 @@ const LoginPage = ({ onLogin }) => {
     e.preventDefault();
     setError("");
     try {
-      const cleanUsername = (username || "").trim();
+      const cleanUsername = (username || "").trim(); // First of the all trim the username
       if (!cleanUsername) throw new Error("Please choose a username.");
       const taken = await isUsernameTaken(cleanUsername);
       if (taken) throw new Error("Username is already taken. Please choose another one.");

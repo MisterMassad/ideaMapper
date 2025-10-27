@@ -1,5 +1,4 @@
-// MapEditor.jsx (Supabase version – buffered renaming + safer cursors label)
-// FIX: keep node name as a plain string in data.title; render JSX only at paint time.
+// MapEditor.jsx
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import ReactFlow, {
   addEdge,
@@ -699,32 +698,46 @@ const MapEditor = ({ mapId }) => {
     };
   }, []);
 
-  // ----- Cursors: write my position (throttled) -----
+  // ----- Cursors: Writes current position. This is throttled to prevent any database quota issues -----
   useEffect(() => {
-    const onMove = async (event) => {
-      if (!reactFlowWrapper.current || !currentUser) return;
-      const now = Date.now();
-      if (now - lastCursorSentRef.current < 50) return; // ~20fps throttle
-      lastCursorSentRef.current = now;
+  if (!currentUser || !mapId) return;
 
-      const bounds = reactFlowWrapper.current.getBoundingClientRect();
-      const x = event.clientX - bounds.left;
-      const y = event.clientY - bounds.top;
+  let cachedUsername = null;
 
-      // get a nice display name
-      let username = "Unknown User";
-      if (currentUser?.user_metadata?.username) {
-        username = currentUser.user_metadata.username;
-      } else {
-        // or pull from profiles once (cacheable)
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", currentUser.id)
-          .single();
-        if (prof?.username) username = prof.username;
-      }
+  // Fetch the username - for new usernamaes and current
+  const fetchUsername = async () => {
+    try {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", currentUser.id)
+        .single();
 
+      cachedUsername = prof?.username || "Mystery User";
+    } catch (err) {
+      console.warn("Failed to fetch username:", err.message);
+      cachedUsername = "Mystery User";
+    }
+  };
+
+  // Fetch immediately on mount
+  fetchUsername();
+
+  const onMove = async (event) => {
+    if (!reactFlowWrapper.current || !currentUser) return;
+
+    const now = Date.now();
+    if (now - lastCursorSentRef.current < 50) return; // ~20fps throttle
+    lastCursorSentRef.current = now;
+
+    const bounds = reactFlowWrapper.current.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+
+    // If not cached, use "Myster User". I will update it to show the last username
+    const username = cachedUsername || "Mystery User";
+
+    try {
       await supabase.from("map_cursors").upsert({
         map_id: mapId,
         user_id: currentUser.id,
@@ -734,11 +747,14 @@ const MapEditor = ({ mapId }) => {
         color: "#FF5733",
         updated_at: new Date().toISOString(),
       });
-    };
+    } catch (err) {
+      console.warn("cursor upsert failed:", err.message);
+    }
+  };
 
-    document.addEventListener("mousemove", onMove);
-    return () => document.removeEventListener("mousemove", onMove);
-  }, [currentUser, mapId]);
+  document.addEventListener("mousemove", onMove);
+  return () => document.removeEventListener("mousemove", onMove);
+}, [currentUser, mapId]);
 
   // ---- UI Handlers ----
   const refreshPage = () => window.location.reload();
@@ -1029,7 +1045,7 @@ const MapEditor = ({ mapId }) => {
           </div>
         )}
 
-        {/* Live cursors (label below the dot) */}
+        {/* Live cursors*/}
         {Object.entries(cursors).map(([id, cursor]) => (
           <div
             key={id}
@@ -1042,9 +1058,9 @@ const MapEditor = ({ mapId }) => {
               zIndex: 1000,
             }}
           >
-            {/* Dot */}
+            {/*  */}
             <div style={{ width: 10, height: 10, background: cursor.color, borderRadius: "50%" }} />
-            {/* Label BELOW the dot */}
+            {/*  */}
             <div
               style={{
                 marginTop: 6,
