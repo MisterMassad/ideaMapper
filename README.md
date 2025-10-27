@@ -153,4 +153,8 @@ You need to setup *Supabase*.
    - You can re run npm install inside the client.
    - A common error is that react scripts are not found, you can fix using: "npm install react-scripts@5.0.1 --save"
 
+## Notes and Credits:
+- My task in this project was to migrate the project from using Firebase to Supabase, patch bugs, and add new features to the project.
+- This project is being worked on by students in the Semester Project at the University of Haifa.
+- Original project's repo: https://github.com/xCraftLab/HiveMindMap
 
