@@ -174,6 +174,32 @@ const LoginPage = ({ onLogin }) => {
     }
   };
 
+  // Github login auth
+  const signInWithGithub = async () => {
+    setError("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        //
+      },
+    });
+    if (error) setError(error.message);
+  };
+
+  // GOOGLE LOGIN (OAuth)
+  const signInWithGoogle = async () => {
+    setError("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) setError(error.message);
+  };
+
+
+
   // ===== Password Reset (request email) View =====
   if (showReset) {
     return (
@@ -294,6 +320,64 @@ const LoginPage = ({ onLogin }) => {
               {isLogin ? "Login" : "Create Account"}
             </button>
           </div>
+
+          {isLogin && (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  margin: "14px 0",
+                }}
+              >
+                <div style={{ height: 1, background: "var(--border)", flex: 1 }} />
+                <span style={{ color: "var(--muted)", fontSize: ".9rem" }}>or</span>
+                <div style={{ height: 1, background: "var(--border)", flex: 1 }} />
+              </div>
+
+              <div className="button-row">
+                <button type="button" className="login-button" onClick={signInWithGithub}>
+                  Continue with GitHub
+                </button>
+              </div>
+
+
+              <div className="button-row" style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={signInWithGoogle}
+                  className="login-button"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    background: "white",
+                    border: "1px solid #e2e8f0",
+                    color: "#0f172a",
+                    fontWeight: 600,
+                  }}
+                >
+                  <img
+                    src="https://www.svgrepo.com/show/355037/google.svg"
+                    alt="Google logo"
+                    width="18"
+                    height="18"
+                    style={{ marginRight: 6 }}
+                  />
+                  Continue with Google
+                </button>
+              </div>
+
+            </>
+
+
+          )}
+
+
+
+
         </form>
 
         {isLogin && (
