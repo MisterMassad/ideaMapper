@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import { supabase } from "../supabaseClient";
 import "../styles/Login.css";
+import MindmapBackground from "./MindMapBackground";
 
 // Socket.IO connection
 const socket = io("http://localhost:5000");
@@ -176,6 +177,7 @@ const LoginPage = ({ onLogin }) => {
   if (showReset) {
     return (
       <div className="login-container">
+        <MindmapBackground /> {/* Background component */}
         <h1
           className={`app-title rot-${titleIndex % 2}`}
           data-text={resetMessages[titleIndex % resetMessages.length]}
@@ -222,6 +224,7 @@ const LoginPage = ({ onLogin }) => {
   // ===== Login / Sign Up View =====
   return (
     <div className="login-container">
+      <MindmapBackground /> {/* Background component */}
       <h1 className={`app-title rot-${titleIndex % 2}`} data-text={title} aria-live="polite">
         {title}
       </h1>
