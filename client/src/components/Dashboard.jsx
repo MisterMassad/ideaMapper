@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import MapEditor from "./MapEditor"; // TODO: migrate MapEditor to Supabase next
 import "../styles/Dashboard.css";
+import AvatarPromptModal from "./AvatarPromptModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -34,6 +35,10 @@ const Dashboard = () => {
 
   // Auth user
   const [currentUser, setCurrentUser] = useState(null);
+  const [showAvatarPrompt, setShowAvatarPrompt] = useState(false);
+  const DEFAULT_AVATAR_URL =
+    "https://YOUR-PROJECT.supabase.co/storage/v1/object/public/avatars/defaults/default.png";
+
 
   // ------------- helpers -------------
   const getUser = useCallback(async () => {
@@ -50,25 +55,25 @@ const Dashboard = () => {
     return (data?.length ?? 0) > 0;
   }, []);
 
-  
-  
 
-  
+
+
+
   const loadProfile = useCallback(async (uid) => {
     try {
       if (!uid || typeof uid !== "string" || uid.length < 10) {
         const { data: authData } = await supabase.auth.getUser();
         uid = authData?.user?.id;
       }
-  
+
       const { data, error } = await supabase
         .from("profiles")
         .select("email, username, profile_picture")
         .eq("id", uid)
         .single();
-  
+
       if (error) throw error;
-  
+
       setEmail(data?.email || "");
       setUsername(data?.username || "");
       setProfilePicture(data?.profile_picture || "");
@@ -83,7 +88,7 @@ const Dashboard = () => {
       );
     }
   }, []);
-  
+
   // const loadProfile = useCallback(async (uid) => {
   //   const { data, error } = await supabase
   //     .from("profiles")
@@ -97,9 +102,9 @@ const Dashboard = () => {
   // }, []);
 
 
-  
 
-  
+
+
   const refreshMaps = useCallback(async (uid) => {
     // maps where the user is a participant
     const { data, error } = await supabase
@@ -132,6 +137,24 @@ const Dashboard = () => {
         setCurrentUser(user);
         await loadProfile(user.id);
         await refreshMaps(user.id);
+
+        // ---- Onboarding popup for avatar ----
+        // Ensure that the profile row exists and check onboarding_seen
+        const { data: prof, error: profErr } = await supabase
+          .from("profiles")
+          .select("id, onboarding_seen, profile_picture")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (profErr) throw profErr;
+
+        if (!prof) {
+          // If there's no row, create it and show prompt
+          await supabase.from("profiles").insert({ id: user.id });
+          setShowAvatarPrompt(true);
+        } else if (prof.onboarding_seen === false) {
+          setShowAvatarPrompt(true);
+        }
+
 
         // Realtime: if user’s participation or map changes, refresh
         const ch = supabase
@@ -233,18 +256,18 @@ const Dashboard = () => {
   const createNewMap = async (e) => {
     e.preventDefault();
     setError("");
-  
+
     try {
       const { data: authRes } = await supabase.auth.getUser();
       const user = authRes?.user;
       if (!user) throw new Error("You must be logged in.");
-  
+
       const name = (newMapName || "").trim();
       if (!name) {
         setError("Please enter a map name.");
         return;
       }
-  
+
       // Use server-side RPC to avoid RLS issues
       const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
         p_name: name,
@@ -255,18 +278,18 @@ const Dashboard = () => {
         setError(rpcErr.message || "Failed to create map.");
         return;
       }
-  
+
       setNewMapName("");
       setIsCreateInputVisible(false);
       setSelectedMapId(newId); // open MapEditor
-  
+
     } catch (err) {
       console.error("Unexpected createNewMap error:", err);
       setError(err.message || "Failed to create map.");
     }
   };
-  
-  
+
+
 
   const handleDeleteClick = (mapId, mapName) => {
     setConfirmDelete({ isVisible: true, mapId, mapName });
@@ -293,7 +316,7 @@ const Dashboard = () => {
     e.preventDefault();
     setJoinSuccessMessage("");
     setError("");
-  
+
     try {
       // ensure auth
       let me = currentUser;
@@ -302,14 +325,14 @@ const Dashboard = () => {
         me = data?.user;
       }
       if (!me) throw new Error("You must be logged in.");
-  
+
       const id = (joinMapId || "").trim();
       const name = (joinMapName || "").trim();
       if (!id || !name) {
         setError("Please provide both the map name and ID.");
         return;
       }
-  
+
       // 1) verify (id, name)
       const { data: ok, error: rpcErr } = await supabase.rpc("verify_map_name", {
         p_map_id: id,
@@ -324,7 +347,7 @@ const Dashboard = () => {
         setError("The map name does not match the provided ID.");
         return;
       }
-  
+
       // 2) idempotent participation (avoid duplicate PK)
       const { error: upErr } = await supabase
         .from("map_participants")
@@ -337,7 +360,7 @@ const Dashboard = () => {
         setError("Couldn't join this map. Ask the owner to invite you.");
         return;
       }
-  
+
       // 3) clean UI and open the map
       setJoinMapName("");
       setJoinMapId("");
@@ -348,8 +371,8 @@ const Dashboard = () => {
       setError(err.message || "An error occurred while trying to join the map.");
     }
   };
-  
-  
+
+
 
   const cancelJoinMap = () => {
     setJoinMapName("");
@@ -544,6 +567,21 @@ const Dashboard = () => {
           </div>
         ))}
       </div>
+
+      {/* One-time onboarding popup */}
+      <AvatarPromptModal
+        isOpen={showAvatarPrompt}
+        userId={currentUser?.id}
+        defaultAvatarUrl={DEFAULT_AVATAR_URL}
+        onClose={(res) => {
+          setShowAvatarPrompt(false);
+          if (res?.updated) {
+            if (res.url) setProfilePicture(res.url);
+            else if (res.skipped) setProfilePicture(DEFAULT_AVATAR_URL);
+          }
+        }}
+      />
+
     </div>
   );
 };

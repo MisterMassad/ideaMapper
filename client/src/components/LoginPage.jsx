@@ -13,7 +13,7 @@ const LoginPage = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [profilePicture, setProfilePicture] = useState(null);
+  // const [profilePicture, setProfilePicture] = useState(null);
 
   // UI state
   const [isLogin, setIsLogin] = useState(true); // true=Login, false=Sign Up
@@ -33,7 +33,7 @@ const LoginPage = ({ onLogin }) => {
   }, []);
   const title = messages[titleIndex];
 
-  const defaultProfilePicture = "https://example.com/default-profile-picture.png";
+  // const defaultProfilePicture = "https://example.com/default-profile-picture.png";
 
   useEffect(() => {
     socket.on("map_updated", (data) => {
@@ -42,16 +42,16 @@ const LoginPage = ({ onLogin }) => {
     return () => socket.off("map_updated");
   }, []);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => setProfilePicture(reader.result);
-      reader.readAsDataURL(file);
-    } else {
-      setError("Please upload a valid image file.");
-    }
-  };
+  // const handleFileChange = (e) => {
+  //   const file = e.target.files[0];
+  //   if (file && file.type.startsWith("image/")) {
+  //     const reader = new FileReader();
+  //     reader.onloadend = () => setProfilePicture(reader.result);
+  //     reader.readAsDataURL(file);
+  //   } else {
+  //     setError("Please upload a valid image file.");
+  //   }
+  // };
 
   const handleSwitchMode = (mode) => {
     setError("");
@@ -112,8 +112,9 @@ const LoginPage = ({ onLogin }) => {
           id: user.id,
           email: user.email,
           username: cleanUsername,
-          profile_picture: profilePicture || defaultProfilePicture,
+          // profile_picture will be set later after first login
         });
+
         if (upsertErr) throw upsertErr;
 
         socket.emit("user_logged_in", { email: user.email });
@@ -275,12 +276,12 @@ const LoginPage = ({ onLogin }) => {
             <span>Password</span>
           </label>
 
-          {!isLogin && (
+          {/* {!isLogin && (
             <label className="field floating">
               <input type="file" accept="image/*" onChange={handleFileChange} placeholder=" " />
               <span>Profile Picture</span>
             </label>
-          )}
+          )} */}
 
           {error && <p className="error-message shake" role="alert">{error}</p>}
 

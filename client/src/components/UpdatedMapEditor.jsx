@@ -496,21 +496,22 @@ const MapEditor = ({ mapId }) => {
       );
     }
 
-    return (
-      <div className="me-node">
-        <div className="me-node-meta">
-          {creatorInfo?.profile_picture && (
-            <img
-              src={creatorInfo.profile_picture}
-              alt="Creator Avatar"
-              style={{ width: 20, height: 20, borderRadius: "50%" }}
-            />
-          )}
-          <span>{creatorUsername}</span> ({creationDate})
-        </div>
-        <div className="me-node-title">{title}</div>
-      </div>
-    );
+return (
+  <div className="me-node">
+    <div className="me-node-meta">
+      {creatorInfo?.profile_picture && (
+        <img
+          src={creatorInfo.profile_picture}
+          alt="Creator Avatar"
+          style={{ width: 20, height: 20, borderRadius: "50%" }}
+        />
+      )}
+      <span>{creatorUsername}</span> ({creationDate})
+    </div>
+    <div className="me-node-title">{title}</div>
+  </div>
+);
+
   };
 
   // ----- Load map + subscribe -----
@@ -780,8 +781,8 @@ useEffect(() => {
             },
           }))}
           edges={edges}
-          onNodesChange={onNodesChange /* ReactFlow internal state updates */}
-          onEdgesChange={onEdgesChange}
+          onNodesChange={handleNodeChanges /* ReactFlow internal state updates */}
+          onEdgesChange={handleEdgeChanges}
           onContextMenu={onContextMenu}
           onConnect={onConnect}
           onPaneClick={() => {
