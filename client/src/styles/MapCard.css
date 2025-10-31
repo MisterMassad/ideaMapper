@@ -1,0 +1,132 @@
+/* src/styles/MapCard.css */
+
+.mc {
+  display: grid;
+  grid-template-rows: 140px auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .18s ease;
+}
+
+.mc:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+  border-color: rgba(14,165,233,0.22);
+}
+
+/* Thumbnail = gradient “preview/placeholder” */
+.mc__thumb {
+  display: block;
+  width: 100%;
+  border: 0;
+  cursor: pointer;
+  background:
+    radial-gradient(120% 100% at 80% 20%, rgba(14,165,233,.20), transparent 60%),
+    radial-gradient(120% 100% at 20% 80%, rgba(34,211,238,.15), transparent 60%),
+    linear-gradient(135deg, rgba(14,165,233,.18), rgba(34,211,238,.18));
+  min-height: 140px;
+}
+
+/* Body */
+.mc__body { padding: 12px 12px 14px; display: grid; gap: 8px; }
+
+.mc__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mc__title {
+  font-weight: 800;
+  color: var(--ink);
+  font-size: 1rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc__actions { display: flex; align-items: center; gap: 6px; }
+
+.mc__open {
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  color: var(--ink);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, transform .12s ease, box-shadow .12s ease;
+}
+.mc__open:hover { background: #eef2f7; transform: translateY(-1px); }
+
+.mc__dots {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: background .12s ease, transform .12s ease, box-shadow .12s ease;
+}
+.mc__dots:hover { background: rgba(14,165,233,.08); transform: translateY(-1px); }
+
+/* Description + meta */
+.mc__desc {
+  color: var(--muted);
+  font-size: .92rem;
+  line-height: 1.35;
+  max-height: 3.1em;         /* ~2 lines */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mc__meta {
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+/* Popover menu */
+.mc__menu {
+  position: absolute;
+  margin-top: 4px;
+  right: 10px;
+  transform: translateY(2px);
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  border-radius: 12px;
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+  z-index: 50;
+}
+
+.mc__menu > button {
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mc__menu > button:hover { background: rgba(14,165,233,.08); }
+.mc__menu > button.is-danger { color: #e11d48; }
+.mc__menu > button.is-danger:hover { background: rgba(225,29,72,.08); }
+
+/* Dark theme: inherits tokens. Only tweak thumb subtlety if desired */
+:root[data-theme="dark"] .mc__thumb {
+  background:
+    radial-gradient(120% 100% at 80% 20%, rgba(30,199,255,.18), transparent 60%),
+    radial-gradient(120% 100% at 20% 80%, rgba(56,189,248,.12), transparent 60%),
+    linear-gradient(135deg, rgba(15,23,42,.8), rgba(30,41,59,.85));
+}

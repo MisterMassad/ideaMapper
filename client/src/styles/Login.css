@@ -426,3 +426,9 @@
 .mindmap-canvas {
   pointer-events: auto;   /* was none */
 }
+
+.google-github.button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  transition: 0.15s ease;
+}

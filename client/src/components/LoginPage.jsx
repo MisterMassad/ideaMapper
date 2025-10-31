@@ -328,26 +328,27 @@ const LoginPage = ({ onLogin }) => {
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  margin: "14px 0",
+                  margin: "16px 0",
                 }}
               >
                 <div style={{ height: 1, background: "var(--border)", flex: 1 }} />
-                <span style={{ color: "var(--muted)", fontSize: ".9rem" }}>or</span>
+                <span style={{ color: "var(--muted)", fontSize: ".9rem" }}>or continue with</span>
                 <div style={{ height: 1, background: "var(--border)", flex: 1 }} />
               </div>
 
-              <div className="button-row">
-                <button type="button" className="login-button" onClick={signInWithGithub}>
-                  Continue with GitHub
-                </button>
-              </div>
-
-
-              <div className="button-row" style={{ marginTop: 8 }}>
-                <button
+              <div
+                className="button-row"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                  width: "100%",
+                }}
+              >
+                {/* --- GitHub --- */}
+                <button className="google-github"
                   type="button"
                   onClick={signInWithGoogle}
-                  className="login-button"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -356,7 +357,10 @@ const LoginPage = ({ onLogin }) => {
                     background: "white",
                     border: "1px solid #e2e8f0",
                     color: "#0f172a",
+                    borderRadius: "8px",
                     fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "12px 14px",
                   }}
                 >
                   <img
@@ -364,16 +368,40 @@ const LoginPage = ({ onLogin }) => {
                     alt="Google logo"
                     width="18"
                     height="18"
-                    style={{ marginRight: 6 }}
                   />
                   Continue with Google
                 </button>
+
+                <button className="google-github"
+                  type="button"
+                  onClick={signInWithGithub}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    background: "#24292f",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg"
+                    alt="GitHub logo"
+                    width="18"
+                    height="18"
+                    style={{ filter: "invert(1)" }}
+                  />
+                  Continue with GitHub
+                </button>
               </div>
-
             </>
-
-
           )}
+
 
 
 

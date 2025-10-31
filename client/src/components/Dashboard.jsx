@@ -5,6 +5,13 @@ import { supabase } from "../supabaseClient";
 import MapEditor from "./MapEditor"; // TODO: migrate MapEditor to Supabase next
 import "../styles/Dashboard.css";
 import AvatarPromptModal from "./AvatarPromptModal";
+import ActionMenu from "./ActionMenu";
+
+import Sidebar from "./Sidebar";
+import MapCard from "./MapCard";
+
+  // Helper to calculate the payload
+  const bytes = (obj) => new TextEncoder().encode(JSON.stringify(obj ?? {})).length;
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -38,6 +45,18 @@ const Dashboard = () => {
   const [showAvatarPrompt, setShowAvatarPrompt] = useState(false);
   const DEFAULT_AVATAR_URL =
     "https://YOUR-PROJECT.supabase.co/storage/v1/object/public/avatars/defaults/default.png";
+
+  // Action targets
+  const [renameTarget, setRenameTarget] = useState(null);        // { id, name }
+  const [editDescTarget, setEditDescTarget] = useState(null);    // { id, description }
+  const [dupTarget, setDupTarget] = useState(null);              // id
+
+  // Controlled inputs for the two forms
+  const [renameValue, setRenameValue] = useState("");
+  const [descValue, setDescValue] = useState("");
+
+  // Optional: light feedback
+  const [saving, setSaving] = useState(false);
 
 
   // ------------- helpers -------------
@@ -105,25 +124,61 @@ const Dashboard = () => {
 
 
 
-  const refreshMaps = useCallback(async (uid) => {
-    // maps where the user is a participant
-    const { data, error } = await supabase
-      .from("map_participants")
-      .select("map:maps(*)")
-      .eq("user_id", uid);
-    if (error) throw error;
+const refreshMaps = useCallback(async (uid) => {
+  console.time("maps.refresh");
+  const t0 = performance.now();
 
-    const list = (data || []).map((r) => r.map).filter(Boolean);
-    // Keep a stable shape { id, name, ... }
-    setAllMaps(list);
-    // Apply current search term
-    if (searchTerm.trim() === "") {
-      setMaps(list);
-    } else {
-      const term = searchTerm.toLowerCase();
-      setMaps(list.filter((m) => (m.name || "").toLowerCase().includes(term)));
-    }
-  }, [searchTerm]);
+  // Pull only lightweight fields from the joined maps row
+  const baseSelect =
+    "map:maps(id,name,description,last_edited,owner_id)";
+
+  // First try: order by last_edited (your schema)
+  let resp = await supabase
+    .from("map_participants")
+    .select(baseSelect)
+    .eq("user_id", uid)
+    // If your supabase-js version supports it, keep the foreignTable option.
+    // If not, we'll fallback below.
+    .order("last_edited", { ascending: false, foreignTable: "maps" })
+    .limit(120, { foreignTable: "maps" });
+
+  // If that errored (e.g., older client doesn’t support foreignTable),
+  // try again without order to keep things working.
+  if (resp.error) {
+    console.warn("refreshMaps fallback (no order):", resp.error.message);
+    resp = await supabase
+      .from("map_participants")
+      .select(baseSelect)
+      .eq("user_id", uid);
+  }
+
+  console.timeEnd("maps.refresh");
+
+  if (resp.error) {
+    console.error("maps.refresh error:", resp.error);
+    setAllMaps([]);
+    setMaps([]);
+    return;
+  }
+
+  const list = (resp.data || []).map((r) => r.map).filter(Boolean);
+
+  const size = bytes(list);
+  const t1 = performance.now();
+  console.log(
+    `maps.refresh rows=${list.length}, bytes≈${size}, ms=${(t1 - t0).toFixed(1)}`
+  );
+
+  setAllMaps(list);
+
+  if (searchTerm.trim() === "") {
+    setMaps(list);
+  } else {
+    const term = searchTerm.toLowerCase();
+    setMaps(list.filter((m) => (m.name || "").toLowerCase().includes(term)));
+  }
+}, [searchTerm]);
+
 
   // ------------- effects -------------
   useEffect(() => {
@@ -308,6 +363,117 @@ const Dashboard = () => {
     }
   };
 
+  // Rename from the card menu
+const handleRename = async (map) => {
+  const current = (map?.name || "").trim();
+  const next = window.prompt("New name:", current);
+  if (next == null) return; // cancelled
+  const newName = next.trim();
+  if (!newName || newName === current) return;
+
+  // optimistic UI
+  setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, name: newName } : m));
+
+  const { data, error } = await supabase
+    .from("maps")
+    .update({ name: newName, last_edited: new Date().toISOString() }) // ← use last_edited
+    .eq("id", map.id)
+    .select("id, name, description, last_edited")                      // ← select last_edited
+    .single();
+
+  if (error) {
+    console.error("Rename failed:", error);
+    // rollback
+    setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, name: current } : m));
+    alert("Couldn’t rename map. Please try again.");
+  } else if (data) {
+    setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, ...data } : m));
+  }
+};
+
+// Edit description from the card menu
+const handleEditDescription = async (map) => {
+  const current = (map?.description || "").trim();
+  const next = window.prompt("New description:", current);
+  if (next == null) return; // cancelled
+  const newDesc = next.trim();
+  if (newDesc === current) return;
+
+  // optimistic UI
+  setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, description: newDesc } : m));
+
+  const { data, error } = await supabase
+    .from("maps")
+    .update({ description: newDesc, last_edited: new Date().toISOString() }) // ← use last_edited
+    .eq("id", map.id)
+    .select("id, name, description, last_edited")                              // ← select last_edited
+    .single();
+
+  if (error) {
+    console.error("Update description failed:", error);
+    // rollback
+    setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, description: current } : m));
+    alert("Couldn’t update description. Please try again.");
+  } else if (data) {
+    setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, ...data } : m));
+  }
+};
+
+
+  // async function renameMap(id, newName) {
+  //   if (!id || !newName?.trim()) return;
+  //   setSaving(true);
+  //   const { error } = await supabase
+  //     .from("maps")
+  //     .update({ name: newName.trim() })
+  //     .eq("id", id);
+
+  //   setSaving(false);
+  //   if (error) {
+  //     console.error(error);
+  //     setError?.("Failed to rename the map. Please try again.");
+  //     return;
+  //   }
+  //   // Optimistic UI update
+  //   setMaps((prev) => prev.map((m) => (m.id === id ? { ...m, name: newName.trim() } : m)));
+  // }
+
+  // async function updateMapDescription(id, newDesc) {
+  //   if (!id) return;
+  //   setSaving(true);
+  //   const { error } = await supabase
+  //     .from("maps")
+  //     .update({ description: (newDesc ?? "").trim() })
+  //     .eq("id", id);
+
+  //   setSaving(false);
+  //   if (error) {
+  //     console.error(error);
+  //     setError?.("Failed to update the description.");
+  //     return;
+  //   }
+  //   // Optimistic UI update
+  //   setMaps((prev) =>
+  //     prev.map((m) => (m.id === id ? { ...m, description: (newDesc ?? "").trim() } : m))
+  //   );
+  // }
+
+  // If you already have confirmDeleteMap wired to Supabase, keep using it.
+  // If you want a direct delete without the confirm modal, you can use this:
+  async function hardDeleteMap(id) {
+    if (!id) return;
+    setSaving(true);
+    const { error } = await supabase.from("maps").delete().eq("id", id);
+    setSaving(false);
+    if (error) {
+      console.error(error);
+      setError?.("Failed to delete the map.");
+      return;
+    }
+    setMaps((prev) => prev.filter((m) => m.id !== id));
+  }
+
+
   const cancelDelete = () => {
     setConfirmDelete({ isVisible: false, mapId: null, mapName: "" });
   };
@@ -397,191 +563,200 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <div className="header-left">
-          <div className="user-info">
-            <img src={profilePicture} alt="Profile" className="profile-picture" />
-            <h2 style={{ color: "#2C5F2D" }}>Hi {username || "User"} ;)</h2>
-            <button className="details-button" onClick={() => setShowProfileDetails(true)}>
-              User Details
-            </button>
-          </div>
-        </div>
-        <div className="header-right">
-          <button className="card-button logout-button" onClick={handleLogout}>
-            Log Out
-          </button>
-        </div>
-      </header>
-
-      {showProfileDetails && (
-        <div className="modal" tabIndex={0}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Your Profile</h2>
-              <button className="close-button" onClick={() => setShowProfileDetails(false)}>
-                &times;
+      <div className="dashboard-layout"> {/* New flex container */}
+        <Sidebar
+          active="maps"
+          user={{ username, email, profilePicture }}
+          onNav={(key) => { if (key === "settings") setShowProfileDetails(true); }}
+          onSettings={() => setShowProfileDetails(true)}
+          onSignOut={handleLogout}
+        />
+        <div className="content-area">
+          <header className="dashboard-header">
+            <div className="header-left">
+              <div className="user-info">
+                <img src={profilePicture} alt="Profile" className="profile-picture" />
+                <h2 className="user-greeting">Hi {username || "User"} ;)</h2>
+                <button className="details-button" onClick={() => setShowProfileDetails(true)}>
+                  User Details
+                </button>
+              </div>
+            </div>
+            <div className="header-right">
+              <button className="card-button logout-button" onClick={handleLogout}>
+                Log Out
               </button>
             </div>
-            <form className="profile-form" onSubmit={handleProfileUpdate}>
-              <div className="form-group">
-                <label>Email:</label>
-                <input type="email" value={email} disabled className="form-input" />
-              </div>
-              <div className="form-group">
-                <label>Username:</label>
-                <input type="text" value={username} onChange={handleUsernameChange} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label>Profile Picture:</label>
-                <input type="file" accept="image/*" onChange={handleFileChange} className="form-input" />
-              </div>
-              {error && <p className="error-text">{error}</p>}
-              <div className="modal-buttons" style={{ marginTop: 12 }}>
-                <button type="submit" className="card-button">Save</button>
-                <button type="button" className="card-button" onClick={() => setShowProfileDetails(false)}>
-                  Close
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </header>
 
-      <div className="button-container">
-        {!isCreateInputVisible && (
-          <button className="card-button" onClick={() => setIsCreateInputVisible(true)}>
-            Create New Map
-          </button>
-        )}
-
-        {!isJoinInputVisible && (
-          <button className="card-button" onClick={() => setIsJoinInputVisible(true)}>
-            Join Map
-          </button>
-        )}
-      </div>
-
-      {isCreateInputVisible && (
-        <div className="modal">
-          <div className="modal-content">
-            <form onSubmit={createNewMap} className="new-map-form">
-              <input
-                type="text"
-                value={newMapName}
-                onChange={(e) => setNewMapName(e.target.value)}
-                placeholder="Enter map name"
-                className="new-map-input"
-              />
-              <div className="modal-buttons">
-                <button type="submit" className="card-button">Create Map</button>
-                <button type="button" onClick={() => setIsCreateInputVisible(false)} className="card-button">
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isJoinInputVisible && (
-        <div className="modal">
-          <div className="modal-content">
-            <form onSubmit={joinMap} className="new-map-form">
-              <input
-                type="text"
-                value={joinMapName}
-                onChange={(e) => setJoinMapName(e.target.value)}
-                placeholder="Enter map name"
-                className="new-map-input"
-              />
-              <input
-                type="text"
-                value={joinMapId}
-                onChange={(e) => setJoinMapId(e.target.value)}
-                placeholder="Enter map ID"
-                className="new-map-input"
-              />
-
-              {joinSuccessMessage && (
-                <div className="modal">
-                  <div className="modal-content">
-                    <p>{joinSuccessMessage}</p>
-                    <button className="close-button" onClick={() => setJoinSuccessMessage("")}>
+          {showProfileDetails && (
+            <div className="modal" tabIndex={0}>
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h2>Your Profile</h2>
+                  <button className="close-button" onClick={() => setShowProfileDetails(false)}>
+                    &times;
+                  </button>
+                </div>
+                <form className="profile-form" onSubmit={handleProfileUpdate}>
+                  <div className="form-group">
+                    <label>Email:</label>
+                    <input type="email" value={email} disabled className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label>Username:</label>
+                    <input type="text" value={username} onChange={handleUsernameChange} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label>Profile Picture:</label>
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="form-input" />
+                  </div>
+                  {error && <p className="error-text">{error}</p>}
+                  <div className="modal-buttons" style={{ marginTop: 12 }}>
+                    <button type="submit" className="card-button">Save</button>
+                    <button type="button" className="card-button" onClick={() => setShowProfileDetails(false)}>
                       Close
                     </button>
                   </div>
-                </div>
-              )}
-              {error && <p className="error-text">{error}</p>}
-
-              <div className="modal-buttons">
-                <button type="submit" className="card-button">Join Map</button>
-                <button type="button" onClick={() => setIsJoinInputVisible(false)} className="card-button">
-                  Cancel
-                </button>
+                </form>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {confirmDelete.isVisible && (
-        <div className="modal">
-          <div className="modal-content">
-            <p>Are you sure you want to delete the "{confirmDelete.mapName}" map?</p>
-            <div className="modal-buttons">
-              <button className="card-button" onClick={confirmDeleteMap}>Yes</button>
-              <button className="card-button" onClick={cancelDelete}>No</button>
             </div>
+          )}
+
+          <div className="button-container">
+            {!isCreateInputVisible && (
+              <button className="card-button" onClick={() => setIsCreateInputVisible(true)}>
+                Create New Map
+              </button>
+            )}
+
+            {!isJoinInputVisible && (
+              <button className="card-button" onClick={() => setIsJoinInputVisible(true)}>
+                Join Map
+              </button>
+            )}
           </div>
-        </div>
-      )}
 
-      <h3 style={{ color: "#2C5F2D" }}>Your Learning Space:</h3>
+          {isCreateInputVisible && (
+            <div className="modal">
+              <div className="modal-content">
+                <form onSubmit={createNewMap} className="new-map-form">
+                  <input
+                    type="text"
+                    value={newMapName}
+                    onChange={(e) => setNewMapName(e.target.value)}
+                    placeholder="Enter map name"
+                    className="new-map-input"
+                  />
+                  <div className="modal-buttons">
+                    <button type="submit" className="card-button">Create Map</button>
+                    <button type="button" onClick={() => setIsCreateInputVisible(false)} className="card-button">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
-      <div className="search-container">
-        <input
-          type="text"
-          placeholder="Search learning space..."
-          value={searchTerm}
-          onChange={handleSearch}
-          className="search-input"
-        />
-      </div>
+          {isJoinInputVisible && (
+            <div className="modal">
+              <div className="modal-content">
+                <form onSubmit={joinMap} className="new-map-form">
+                  <input
+                    type="text"
+                    value={joinMapName}
+                    onChange={(e) => setJoinMapName(e.target.value)}
+                    placeholder="Enter map name"
+                    className="new-map-input"
+                  />
+                  <input
+                    type="text"
+                    value={joinMapId}
+                    onChange={(e) => setJoinMapId(e.target.value)}
+                    placeholder="Enter map ID"
+                    className="new-map-input"
+                  />
 
-      <div className="maps-grid">
-        {maps.map((m) => (
-          <div key={m.id} className="map-tile">
-            <button className="card-button" onClick={() => setSelectedMapId(m.id)}>
-              {m.name || m.id}
-            </button>
-            <button className="delete-button" onClick={() => handleDeleteClick(m.id, m.name)}>
-              <div className="trash-icon">
-                <div className="lid"></div>
-                <div className="bin">
-                  <div className="face"></div>
+                  {joinSuccessMessage && (
+                    <div className="modal">
+                      <div className="modal-content">
+                        <p>{joinSuccessMessage}</p>
+                        <button className="close-button" onClick={() => setJoinSuccessMessage("")}>
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {error && <p className="error-text">{error}</p>}
+
+                  <div className="modal-buttons">
+                    <button type="submit" className="card-button">Join Map</button>
+                    <button type="button" onClick={() => setIsJoinInputVisible(false)} className="card-button">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {confirmDelete.isVisible && (
+            <div className="modal">
+              <div className="modal-content">
+                <p>Are you sure you want to delete the "{confirmDelete.mapName}" map?</p>
+                <div className="modal-buttons">
+                  <button className="card-button" onClick={confirmDeleteMap}>Yes</button>
+                  <button className="card-button" onClick={cancelDelete}>No</button>
                 </div>
               </div>
-            </button>
+            </div>
+          )}
+
+          <h3 className="learning-space-title">Your Learning Space:</h3>
+
+          <div className="search-container">
+            <input
+              type="text"
+              placeholder="Search learning space..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="search-input"
+            />
           </div>
-        ))}
+
+          <div className="maps-grid">
+            {maps.map((m) => (
+              <MapCard
+                key={m.id}
+                map={m}
+                onOpen={(id) => setSelectedMapId(id)}
+                onRename={handleRename}
+                onEditDescription={handleEditDescription}
+                onDuplicate={() => alert("Duplicate coming soon")}
+                onDelete={(map) => handleDeleteClick(map.id, map.name)}
+              />
+            ))}
+          </div>
+
+
+
+
+          {/* One-time onboarding popup */}
+          <AvatarPromptModal
+            isOpen={showAvatarPrompt}
+            userId={currentUser?.id}
+            defaultAvatarUrl={DEFAULT_AVATAR_URL}
+            onClose={(res) => {
+              setShowAvatarPrompt(false);
+              if (res?.updated) {
+                if (res.url) setProfilePicture(res.url);
+                else if (res.skipped) setProfilePicture(DEFAULT_AVATAR_URL);
+              }
+            }}
+          />
+        </div>
       </div>
-
-      {/* One-time onboarding popup */}
-      <AvatarPromptModal
-        isOpen={showAvatarPrompt}
-        userId={currentUser?.id}
-        defaultAvatarUrl={DEFAULT_AVATAR_URL}
-        onClose={(res) => {
-          setShowAvatarPrompt(false);
-          if (res?.updated) {
-            if (res.url) setProfilePicture(res.url);
-            else if (res.skipped) setProfilePicture(DEFAULT_AVATAR_URL);
-          }
-        }}
-      />
-
     </div>
   );
 };

@@ -1,0 +1,193 @@
+.sb.sb--fixed {
+  inset: 0 auto 0 0;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+/* Logo */
+.sb__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 4px;
+  border-radius: 10px;
+  text-align: left;
+}
+.sb__logo:hover {
+  background: rgba(14, 165, 233, 0.08);
+}
+.sb__logo:focus-visible {
+  outline: none;
+  box-shadow: var(--ring, 0 0 0 4px rgba(14,165,233,0.18));
+}
+.sb__logo-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0ea5e9;
+  box-shadow: 0 0 20px #1ec7ffaa;
+}
+.sb__logo-text {
+  font-size: 1rem;
+}
+
+/* Nav */
+.sb__nav {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.sb__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink, #0f172a);
+  cursor: pointer;
+  font-weight: 700;
+  transition: background .15s ease, border-color .15s ease, transform .12s ease, box-shadow .12s ease;
+}
+.sb__item:hover {
+  background: rgba(14, 165, 233, 0.08);
+  border-color: rgba(14, 165, 233, 0.25);
+}
+.sb__item:focus-visible {
+  outline: none;
+  box-shadow: var(--ring, 0 0 0 4px rgba(14,165,233,0.18));
+}
+.sb__item.is-active {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.45);
+  box-shadow: var(--shadow-1, 0 8px 20px rgba(2,6,23,.06));
+}
+
+.sb__icon {
+  width: 22px;
+  text-align: center;
+  font-size: 18px;
+}
+.sb__label {
+  white-space: nowrap;
+}
+
+/* Footer / Profile */
+.sb__footer {
+  margin-top: auto;
+  display: grid;
+  gap: 10px;
+}
+
+.sb__profile {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s ease, box-shadow .12s ease, transform .12s ease;
+}
+.sb__profile:hover {
+  background: rgba(14,165,233,0.06);
+  box-shadow: var(--shadow-1, 0 8px 20px rgba(2,6,23,.06));
+  transform: translateY(-1px);
+}
+.sb__profile:focus-visible {
+  outline: none;
+  box-shadow: var(--ring, 0 0 0 4px rgba(14,165,233,0.18));
+}
+
+.sb__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(14,165,233,0.35);
+}
+
+.sb__profile-info {
+  min-width: 0; /* allow ellipsis */
+}
+.sb__profile-name {
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+  font-size: 0.95rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb__profile-email {
+  font-size: .78rem;
+  color: var(--muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb__signout {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border, #e2e8f0);
+  background: #f8fafc;
+  transition: background .12s ease, transform .12s ease, box-shadow .12s ease;
+}
+.sb__signout:hover {
+  background: #eef2f7;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-1, 0 8px 20px rgba(2,6,23,.06));
+}
+.sb__signout:focus-visible {
+  outline: none;
+  box-shadow: var(--ring, 0 0 0 4px rgba(14,165,233,0.18));
+}
+
+/* Responsive collapse */
+@media (max-width: 1024px) {
+  .sb { width: 76px; padding: 12px; }
+  .sb__label, .sb__profile-info, .sb__signout { display: none; }
+  .sb__profile { grid-template-columns: 1fr; justify-items: center; }
+  .sb__avatar { width: 44px; height: 44px; }
+}
+
+/* Super small screens (optional) */
+@media (max-width: 640px) {
+  /* If you later use sb--fixed on phones, you might want a drawer instead. */
+}
+/* Sidebar base styles */
+.sb {
+    position: relative;
+  width: var(--sb-w);
+  height: 100%;           /* use parent height, not 100vh */
+  min-height: 0;
+  overflow: hidden;       /* no internal scroll */            
+  background: rgba(255,255,255,0.8);
+  border-right: 1px solid rgba(226,232,240,0.9);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  box-sizing: border-box;
+  z-index: 10;
+  overflow: hidden;
+}
+/* Collapse for small screens */
+@media (max-width: 1024px) {
+  .sb { width: 76px; }
+}
+
