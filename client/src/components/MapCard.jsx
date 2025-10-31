@@ -4,6 +4,7 @@ import "../styles/MapCard.css";
 
 export default function MapCard({
   map,
+  ownerName,
   onOpen,
   onRename,
   onEditDescription,
@@ -60,7 +61,7 @@ export default function MapCard({
         <div className="mc__desc" title={desc}>
           {desc || "No description yet."}
         </div>
-        {updated && <div className="mc__meta">Modified {updated}</div>}
+        {updated && <div className="mc__meta"> {ownerName ? <>by <span className="mc__owner">{ownerName}</span> · </> : null} Modified {updated}</div>}
       </div>
 
       {openMenu && (

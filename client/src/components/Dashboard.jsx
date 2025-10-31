@@ -39,6 +39,7 @@ const Dashboard = () => {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [joinSuccessMessage, setJoinSuccessMessage] = useState("");
+  const [owners, setOwners] = useState({});
 
   // Auth user
   const [currentUser, setCurrentUser] = useState(null);
@@ -124,6 +125,28 @@ const Dashboard = () => {
 
 
 
+const fetchOwners = useCallback(async (list) => {
+  try {
+    const ownerIds = Array.from(
+      new Set((list || []).map(m => m.owner_id).filter(Boolean))
+    );
+    if (ownerIds.length === 0) return;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .in("id", ownerIds);
+
+    if (error) throw error;
+
+    const map = {};
+    (data || []).forEach(r => { map[r.id] = r.username || "User"; });
+    setOwners(map);
+  } catch (e) {
+    console.error("fetchOwners error:", e);
+  }
+}, []);
+
 const refreshMaps = useCallback(async (uid) => {
   console.time("maps.refresh");
   const t0 = performance.now();
@@ -170,6 +193,7 @@ const refreshMaps = useCallback(async (uid) => {
   );
 
   setAllMaps(list);
+  await fetchOwners(list);
 
   if (searchTerm.trim() === "") {
     setMaps(list);
@@ -177,7 +201,9 @@ const refreshMaps = useCallback(async (uid) => {
     const term = searchTerm.toLowerCase();
     setMaps(list.filter((m) => (m.name || "").toLowerCase().includes(term)));
   }
-}, [searchTerm]);
+}, [searchTerm, fetchOwners]);
+
+
 
 
   // ------------- effects -------------
@@ -418,48 +444,63 @@ const handleEditDescription = async (map) => {
     setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, ...data } : m));
   }
 };
-
 const handleDuplicate = async (map) => {
   try {
-    // 0) Auth check
-    const { data: authRes } = await supabase.auth.getUser();
-    const me = authRes?.user;
-    if (!me) throw new Error("You must be logged in.");
-    // 1) Create new map with "Copy of {name}"
-    const baseName = map?.name?.trim() || "Untitled";
-    const newTitle = `Copy of ${baseName}`;
-    const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
-      p_name: newTitle,
-      p_description: map?.description ?? "",
-    });
-    if (rpcErr) throw rpcErr;
+    if (!map?.id) return;
 
-    // 2) Copy payload fields
+    // 1) Pull the source fields 
+    const { data: src, error: selErr } = await supabase
+      .from("maps")
+      .select("name, description, nodes, edges, node_notes, node_data")
+      .eq("id", map.id)
+      .single();
+
+    if (selErr) {
+      console.error("Duplicate: select source failed", selErr);
+      alert("Couldn’t read the map to duplicate.");
+      return;
+    }
+
+    // 2) Create a new map 
+    const copyName = (src?.name ? `${src.name} (copy)` : "Untitled (copy)");
+    const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
+      p_name: copyName,
+      p_description: src?.description || "",
+    });
+    if (rpcErr || !newId) {
+      console.error("Duplicate: create_map RPC failed", rpcErr);
+      alert("Couldn’t create the duplicated map.");
+      return;
+    }
+
+    // 3) Update the new map 
     const payload = {
-      nodes: map?.nodes ?? [],
-      edges: map?.edges ?? [],
-      node_notes: map?.node_notes ?? {},
-      node_data: map?.node_data ?? {},
+      nodes: Array.isArray(src?.nodes) ? src.nodes : [],
+      edges: Array.isArray(src?.edges) ? src.edges : [],
+      node_notes: src?.node_notes ?? {},
+      node_data: src?.node_data ?? {},
       last_edited: new Date().toISOString(),
     };
 
-    // 3) Update the new map with the copied content
     const { error: upErr } = await supabase
       .from("maps")
       .update(payload)
       .eq("id", newId);
-    if (upErr) throw upErr;
 
-    // 4) Add to UI 
-    setMaps((prev) => [
-      { ...map, id: newId, name: newTitle, last_edited: payload.last_edited },
-      ...prev,
-    ]);
+    if (upErr) {
+      console.error("Duplicate: update new map failed", upErr);
+      alert("Map created but content copy failed.");
+      // srefresh; user at least has an empty copy
+    }
 
+    // 4) Refresh list 
+    const { data: authRes } = await supabase.auth.getUser();
+    const me = authRes?.user;
+    if (me?.id) await refreshMaps(me.id);
 
-  } catch (err) {
-    console.error("Duplicate failed:", err);
-    alert(err.message || "Couldn’t duplicate this map. Please try again.");
+  } catch (e) {
+    console.error("Duplicate unexpected error:", e);
+    alert("Something went wrong while duplicating.");
   }
 };
 
@@ -774,6 +815,7 @@ const handleDuplicate = async (map) => {
               <MapCard
                 key={m.id}
                 map={m}
+                ownerName={owners[m.owner_id]}   
                 onOpen={(id) => setSelectedMapId(id)}
                 onRename={handleRename}
                 onEditDescription={handleEditDescription}
