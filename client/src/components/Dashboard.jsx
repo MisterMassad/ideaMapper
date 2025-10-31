@@ -419,6 +419,50 @@ const handleEditDescription = async (map) => {
   }
 };
 
+const handleDuplicate = async (map) => {
+  try {
+    // 0) Auth check
+    const { data: authRes } = await supabase.auth.getUser();
+    const me = authRes?.user;
+    if (!me) throw new Error("You must be logged in.");
+    // 1) Create new map with "Copy of {name}"
+    const baseName = map?.name?.trim() || "Untitled";
+    const newTitle = `Copy of ${baseName}`;
+    const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
+      p_name: newTitle,
+      p_description: map?.description ?? "",
+    });
+    if (rpcErr) throw rpcErr;
+
+    // 2) Copy payload fields
+    const payload = {
+      nodes: map?.nodes ?? [],
+      edges: map?.edges ?? [],
+      node_notes: map?.node_notes ?? {},
+      node_data: map?.node_data ?? {},
+      last_edited: new Date().toISOString(),
+    };
+
+    // 3) Update the new map with the copied content
+    const { error: upErr } = await supabase
+      .from("maps")
+      .update(payload)
+      .eq("id", newId);
+    if (upErr) throw upErr;
+
+    // 4) Add to UI 
+    setMaps((prev) => [
+      { ...map, id: newId, name: newTitle, last_edited: payload.last_edited },
+      ...prev,
+    ]);
+
+
+  } catch (err) {
+    console.error("Duplicate failed:", err);
+    alert(err.message || "Couldn’t duplicate this map. Please try again.");
+  }
+};
+
 
   // async function renameMap(id, newName) {
   //   if (!id || !newName?.trim()) return;
@@ -733,7 +777,7 @@ const handleEditDescription = async (map) => {
                 onOpen={(id) => setSelectedMapId(id)}
                 onRename={handleRename}
                 onEditDescription={handleEditDescription}
-                onDuplicate={() => alert("Duplicate coming soon")}
+                onDuplicate={(map) => handleDuplicate(map)} 
                 onDelete={(map) => handleDeleteClick(map.id, map.name)}
               />
             ))}
