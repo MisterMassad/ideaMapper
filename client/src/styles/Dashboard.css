@@ -36,7 +36,7 @@ html, body {
 }
 
 /* =========================================================
-   PAGE SHELL (animated blobs)
+   PAGE SHELL circles
    ========================================================= */
 .dashboard-container {
   position: relative;
@@ -506,5 +506,47 @@ h3 {
 
 :root[data-theme="dark"] .sb__profile-name {
   color: black;  /* darker grey in dark theme */
+}
+
+/* Choose input file design */
+.form-input[type="file"] {
+  position: relative;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  color: #334155;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+
+.form-input[type="file"]::-webkit-file-upload-button {
+  visibility: hidden;
+}
+
+.form-input[type="file"]::before {
+  content: "📁  Choose File";
+  display: inline-block;
+  color: #fff;
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.form-input[type="file"]:hover::before {
+  background: linear-gradient(135deg, #38bdf8, #60a5fa);
+  transform: translateY(-1px);
+}
+
+/* Small glow when active */
+.form-input[type="file"]:active::before {
+  box-shadow: 0 0 0 3px rgba(14,165,233,0.3);
 }
 

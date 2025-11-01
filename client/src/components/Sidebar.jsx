@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import "../styles/Sidebar.css";
 
-export default function Sidebar({ active = "maps", user = {}, onNav, onSettings, onSignOut }) {
+export default function Sidebar({ active = "maps", user = {}, onNav, onUpgrade, onSettings, onSignOut }) {
     const [theme, setTheme] = useState("light");
     // Load saved theme on mount
     useEffect(() => {
@@ -45,12 +45,13 @@ export default function Sidebar({ active = "maps", user = {}, onNav, onSettings,
                 </button>
 
                 <button
-                    className={`sb__item ${active === "settings" ? "is-active" : ""}`}
-                    onClick={onSettings}
-                >
-                    <span className="sb__icon">⚙️</span>
-                    <span className="sb__label">Settings</span>
-                </button>
+                    className={`sb__item ${active === "upgrade" ? "is-active" : ""}`}
+                    onClick={onUpgrade}
+                    >
+                    <span className="sb__icon">💎</span>
+                    <span className="sb__label">Upgrade Plan</span>
+                    </button>
+
             </nav>
 
             {/* Footer / Profile */}

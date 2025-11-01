@@ -6,6 +6,8 @@ import MapEditor from "./MapEditor"; // TODO: migrate MapEditor to Supabase next
 import "../styles/Dashboard.css";
 import AvatarPromptModal from "./AvatarPromptModal";
 import ActionMenu from "./ActionMenu";
+import LimitModal from "./LimitModal";
+import PlanModal from "./PlanModal";
 
 import Sidebar from "./Sidebar";
 import MapCard from "./MapCard";
@@ -20,6 +22,12 @@ const Dashboard = () => {
   const [maps, setMaps] = useState([]);
   const [allMaps, setAllMaps] = useState([]);
   const [selectedMapId, setSelectedMapId] = useState(null);
+
+  const [plan, setPlan] = useState("free");
+  const [mapLimit, setMapLimit] = useState(5);
+  const [copyLimit, setCopyLimit] = useState(3);
+  const [showPlans, setShowPlans] = useState(false);
+
 
   // UI state (create/join/delete)
   const [newMapName, setNewMapName] = useState("");
@@ -60,6 +68,44 @@ const Dashboard = () => {
   const [saving, setSaving] = useState(false);
 
 
+  // Quota/limit modal
+  const [limitModal, setLimitModal] = useState({
+    open: false,
+    kind: "map",         // "map" | "copy"
+    limit: 0,
+    used: 0,
+  });
+
+  // Upgrade plan
+  const upgradePlanTo = async (nextPlan) => {
+  try {
+    const limits = { free: 5, pro: 20, unlimited: 9999 };
+    const nextLimit = limits[nextPlan] ?? 5;
+
+    const { data: authRes } = await supabase.auth.getUser();
+    const user = authRes?.user;
+    if (!user) throw new Error("You must be logged in.");
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ plan: nextPlan, map_limit: nextLimit })
+      .eq("id", user.id);
+
+    if (error) throw error;
+
+    // local state
+    setPlan(nextPlan);
+    setMapLimit(nextLimit);
+    setShowPlans(false);
+    alert(`✅ Upgraded to ${nextPlan.toUpperCase()} plan.`);
+  } catch (err) {
+    console.error(err);
+    setError(err.message || "Failed to upgrade plan.");
+  }
+};
+
+
+
   // ------------- helpers -------------
   const getUser = useCallback(async () => {
     const { data, error } = await supabase.auth.getUser();
@@ -88,7 +134,7 @@ const Dashboard = () => {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("email, username, profile_picture")
+        .select("email, username, profile_picture, map_limit, copy_limit, plan")
         .eq("id", uid)
         .single();
 
@@ -97,6 +143,9 @@ const Dashboard = () => {
       setEmail(data?.email || "");
       setUsername(data?.username || "");
       setProfilePicture(data?.profile_picture || "");
+      setPlan(data?.plan || "free")
+      setMapLimit(Number.isFinite(data?.map_limit) ? data.map_limit : 5);
+      setCopyLimit(Number.isFinite(data?.copy_limit) ? data.copy_limit : 3);
     } catch (e) {
       // safe fallback so the panel still shows something
       const { data: authData } = await supabase.auth.getUser();
@@ -349,6 +398,13 @@ const refreshMaps = useCallback(async (uid) => {
         return;
       }
 
+      const owned = countOwned(allMaps, user.id);
+      const unlimited = plan === "unlimited";
+      if (!unlimited && owned >= mapLimit) {
+        openLimitModal("map", mapLimit, owned);
+        return;
+      }
+
       // Use server-side RPC to avoid RLS issues
       const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
         p_name: name,
@@ -444,6 +500,93 @@ const handleEditDescription = async (map) => {
     setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, ...data } : m));
   }
 };
+
+// const handleDuplicate = async (map) => {
+//   try {
+//     if (!map?.id) return;
+
+//     // --- 0) Ensure auth ---
+//     const { data: authRes } = await supabase.auth.getUser();
+//     const user = authRes?.user;
+//     if (!user) throw new Error("You must be logged in.");
+
+//     // --- 1) Quota check -
+//     const owned = countOwned(allMaps, user.id); 
+//     const unlimited = plan === "unlimited";
+//     if (!unlimited && owned >= mapLimit) {
+//       if (typeof openLimitModal === "function") {
+//         openLimitModal("map", mapLimit, owned);
+//       } else {
+//         setError?.(`Map limit reached (${mapLimit}).`);
+//       }
+//       return;
+//     }
+
+//     // --- 2) Pull the source fields
+//     const { data: src, error: selErr } = await supabase
+//       .from("maps")
+//       .select("name, description, nodes, edges, node_notes, node_data")
+//       .eq("id", map.id)
+//       .single();
+
+//     if (selErr) {
+//       console.error("Duplicate: select source failed", selErr);
+//       alert("Couldn’t read the map to duplicate.");
+//       return;
+//     }
+
+//     // --- 3) Decide the new name
+//     const baseName = (src?.name || "Untitled").trim();
+//     let newName = `${baseName} (copy)`;
+//     const existingNames = new Set((allMaps || []).map(m => (m.name || "").trim().toLowerCase()));
+//     let i = 2;
+//     while (existingNames.has(newName.trim().toLowerCase())) {
+//       newName = `${baseName} (copy ${i++})`;
+//     }
+
+//     // --- 4) Create the new map
+//     const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
+//       p_name: newName,
+//       p_description: src?.description || "",
+//     });
+//     if (rpcErr) {
+//       console.error("Duplicate: create_map RPC failed", rpcErr);
+//       alert("Couldn’t create the duplicate.");
+//       return;
+//     }
+
+//     // --- 5) Copy graph payload into the new map ---
+//     const payload = {
+//       nodes: src?.nodes ?? [],
+//       edges: src?.edges ?? [],
+//       node_notes: src?.node_notes ?? {},
+//       node_data: src?.node_data ?? {},
+//       last_edited: new Date().toISOString(),
+//     };
+
+//     const { data: updated, error: upErr } = await supabase
+//       .from("maps")
+//       .update(payload)
+//       .eq("id", newId)
+//       .select("id, name, description, updated_at, last_edited, owner_id")
+//       .single();
+
+//     if (upErr) {
+//       console.error("Duplicate: update new map failed", upErr);
+//       alert("Duplicate created without graph data. You can delete it and retry.");
+//       return;
+//     }
+
+//     // --- 6) Update UI (prepend) ---
+//     setAllMaps(prev => [{ ...(updated || { id: newId, name: newName, description: src?.description || "" }) }, ...prev]);
+//     setMaps(prev => [{ ...(updated || { id: newId, name: newName, description: src?.description || "" }) }, ...prev]);
+
+//   } catch (err) {
+//     console.error("Duplicate error:", err);
+//     setError(err.message || "Failed to duplicate.");
+//   }
+// };
+
 const handleDuplicate = async (map) => {
   try {
     if (!map?.id) return;
@@ -503,6 +646,21 @@ const handleDuplicate = async (map) => {
     alert("Something went wrong while duplicating.");
   }
 };
+
+/// Pricing Function Helpers 
+  function countOwned(allMaps, userId) {
+    return (allMaps || []).filter(m => m.owner_id === userId).length;
+  }
+  function countCopies(allMaps, userId) {
+    return (allMaps || []).filter(
+      m => m.owner_id === userId && (m.created_via === "copy" || m.source_map_id)
+    ).length;
+  }
+
+  function openLimitModal(kind, limit, used) {
+  setLimitModal({ open: true, kind, limit, used });
+}
+
 
 
   // async function renameMap(id, newName) {
@@ -655,6 +813,7 @@ const handleDuplicate = async (map) => {
           onNav={(key) => { if (key === "settings") setShowProfileDetails(true); }}
           onSettings={() => setShowProfileDetails(true)}
           onSignOut={handleLogout}
+          onUpgrade={() => setShowPlans(true)} 
         />
         <div className="content-area">
           <header className="dashboard-header">
@@ -685,7 +844,7 @@ const handleDuplicate = async (map) => {
                 </div>
                 <form className="profile-form" onSubmit={handleProfileUpdate}>
                   <div className="form-group">
-                    <label>Email:</label>
+                    <label>Email Address:</label>
                     <input type="email" value={email} disabled className="form-input" />
                   </div>
                   <div className="form-group">
@@ -825,7 +984,25 @@ const handleDuplicate = async (map) => {
             ))}
           </div>
 
+          <LimitModal
+            open={limitModal.open}
+            kind={limitModal.kind}
+            limit={limitModal.limit}
+            used={limitModal.used}
+            onClose={() => setLimitModal((m) => ({ ...m, open: false }))}
+            onUpgrade={() => {
+              setLimitModal((m) => ({ ...m, open: false }));
+              setShowPlans(true);  // ⟵ open the PlanModal
+            }}
+          />
 
+          <PlanModal
+            isOpen={showPlans}
+            currentPlan={plan}
+            mapLimit={mapLimit}
+            onClose={() => setShowPlans(false)}
+            onUpgrade={(tier) => upgradePlanTo(tier)}  // "free" | "pro" | "unlimited"
+          />
 
 
           {/* One-time onboarding popup */}
