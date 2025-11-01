@@ -13,14 +13,21 @@ export default function MapCard({
 }) {
   const [openMenu, setOpenMenu] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+
+  // NEW: modal states
+  const [showRename, setShowRename] = useState(false);
+  const [showEditDesc, setShowEditDesc] = useState(false);
+  const [tempValue, setTempValue] = useState("");
+
   const dotsBtnRef = useRef(null);
   const menuRef = useRef(null);
+  const inputRef = useRef(null); // autofocus in modal
 
   const title = map?.name || "Untitled";
   const desc = map?.description || "";
   const updated = map?.last_edited ? new Date(map.last_edited).toLocaleDateString() : null;
 
-  // Compute the menu position relative to viewport (works with portal)
+  // Position menu near dots
   const computeMenuPos = useCallback(() => {
     const btn = dotsBtnRef.current;
     const menu = menuRef.current;
@@ -33,11 +40,9 @@ export default function MapCard({
     const w = menu.offsetWidth || 280;
     const h = menu.offsetHeight || 260;
 
-    // Prefer right-aligned under the dots
     let left = r.right - w;
     let top = r.bottom + 8;
 
-    // Clamp to viewport
     if (left + w > vw - pad) left = vw - w - pad;
     if (left < pad) left = pad;
     if (top + h > vh - pad) top = r.top - h - 8;
@@ -47,32 +52,22 @@ export default function MapCard({
   }, []);
 
   const openMenuNearDots = useCallback(() => {
-    if (openMenu) {
-      setOpenMenu(false);
-      return;
-    }
-    setOpenMenu(true);
-  }, [openMenu]);
+    setOpenMenu((v) => !v);
+  }, []);
 
-  // Reposition after the menu mounts, and on resize/scroll while open
   useEffect(() => {
     if (!openMenu) return;
-    // Wait for the menu portal to mount, then measure/position
-    requestAnimationFrame(() => {
-      computeMenuPos();
-    });
-
+    requestAnimationFrame(() => computeMenuPos());
     const onWin = () => computeMenuPos();
     window.addEventListener("resize", onWin);
-    window.addEventListener("scroll", onWin, true); // capture scroll in nested containers too
-
+    window.addEventListener("scroll", onWin, true);
     return () => {
       window.removeEventListener("resize", onWin);
       window.removeEventListener("scroll", onWin, true);
     };
   }, [openMenu, computeMenuPos]);
 
-  // Close on outside click / Esc (document-level)
+  // Close menu on outside / Esc
   useEffect(() => {
     if (!openMenu) return;
     const onDoc = (e) => {
@@ -90,9 +85,51 @@ export default function MapCard({
     };
   }, [openMenu]);
 
+  // Autofocus input when modals open
+  useEffect(() => {
+    if (showRename || showEditDesc) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [showRename, showEditDesc]);
+
+  // Modal handlers
+  const openRenameModal = () => {
+    setOpenMenu(false);
+    setTempValue(map?.name || "");
+    setShowRename(true);
+  };
+
+  const openEditDescModal = () => {
+    setOpenMenu(false);
+    setTempValue(map?.description || "");
+    setShowEditDesc(true);
+  };
+
+  const closeModals = () => {
+    setShowRename(false);
+    setShowEditDesc(false);
+  };
+
+  const saveRename = () => {
+    onRename?.({ ...map, name: tempValue.trim() });
+    closeModals();
+  };
+
+  const saveEditDesc = () => {
+    onEditDescription?.({ ...map, description: tempValue.trim() });
+    closeModals();
+  };
+
+  const handleModalKey = (e) => {
+    if (e.key === "Escape") closeModals();
+    if (e.key === "Enter" && showRename) saveRename();
+    // For description (textarea), only Ctrl/Cmd+Enter saves, Enter adds newline
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && showEditDesc) saveEditDesc();
+  };
+
   return (
     <article className="mc" aria-label={`${title} card`}>
-      {/* THUMB (sealed) */}
+      {/* THUMB */}
       <div className="mc__thumb-layer" aria-hidden="true">
         <button
           className="mc__thumb"
@@ -105,8 +142,8 @@ export default function MapCard({
           <div className="mc__center">
             <div className="mc__center-orb">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
               </svg>
             </div>
             <div className="mc__center-text">Enter Map</div>
@@ -116,7 +153,7 @@ export default function MapCard({
           <div className="mc__shine"></div>
         </button>
 
-        {/* Restored animated dots */}
+        {/* animated dots */}
         <div className="mc__dots-wrapper">
           <button
             ref={dotsBtnRef}
@@ -178,7 +215,7 @@ export default function MapCard({
         </footer>
       </div>
 
-      {/* MENU rendered via portal (never clipped, always on top) */}
+      {/* MENU via portal */}
       {openMenu && createPortal(
         <div
           ref={menuRef}
@@ -192,7 +229,7 @@ export default function MapCard({
           </div>
 
           <div className="mc__menu-items">
-            <button role="menuitem" onClick={() => { setOpenMenu(false); onRename?.(map); }}>
+            <button role="menuitem" onClick={openRenameModal}>
               <span className="mc__mi-ic">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -206,7 +243,7 @@ export default function MapCard({
               <span className="mc__mi-arrow">→</span>
             </button>
 
-            <button role="menuitem" onClick={() => { setOpenMenu(false); onEditDescription?.(map); }}>
+            <button role="menuitem" onClick={openEditDescModal}>
               <span className="mc__mi-ic">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
@@ -250,6 +287,62 @@ export default function MapCard({
           </div>
 
           <div className="mc__menu-f">ID: {map?.id?.slice(0, 8) || "N/A"}</div>
+        </div>,
+        document.body
+      )}
+
+      {/* SEPARATE POPUPS via portal */}
+      {(showRename || showEditDesc) && createPortal(
+        <div
+          className="mc__overlay"
+          onMouseDown={(e) => {
+            // close if click on overlay
+            if (e.target === e.currentTarget) closeModals();
+          }}
+          onKeyDown={handleModalKey}
+          tabIndex={-1}
+        >
+          <div className="mc__popup" role="dialog" aria-modal="true">
+            <h3>{showRename ? "Rename Map" : "Edit Description"}</h3>
+
+            {showRename ? (
+              <input
+                ref={inputRef}
+                className="mc__input"
+                type="text"
+                placeholder="Enter new map name..."
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+              />
+            ) : (
+              <textarea
+                ref={inputRef}
+                className="mc__textarea"
+                rows={4}
+                placeholder="Write a short description..."
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+              />
+            )}
+
+            <div className="mc__popup-buttons">
+              <button
+                className="mc__btn-cancel"
+                type="button"
+                onClick={closeModals}
+              >
+                Cancel
+              </button>
+              <button
+                className="mc__btn-save"
+                type="button"
+                onClick={showRename ? saveRename : saveEditDesc}
+                title={showEditDesc ? "Ctrl/Cmd + Enter to save" : "Enter to save"}
+              >
+                Save
+              </button>
+            </div>
+          </div>
         </div>,
         document.body
       )}
