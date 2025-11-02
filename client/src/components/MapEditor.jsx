@@ -8,6 +8,8 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
   Panel,
+  MiniMap,
+  Background,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { supabase } from "../supabaseClient";
@@ -97,6 +99,9 @@ const predefinedColors = [
   "#57FF33",
 ];
 
+const LOCAL_BG_STYLE_KEY = "mapEditor:bgStyle";
+const LOCAL_BG_COLOR_KEY = "mapEditor:bgColor";
+
 const MapEditor = ({ mapId }) => {
   // React Flow
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -142,6 +147,34 @@ const MapEditor = ({ mapId }) => {
   // Current user
   const [currentUser, setCurrentUser] = useState(null);
 
+  // === Phase A: Background chooser (per-user) ===
+  const [bgStyle, setBgStyle] = useState(() => {
+    try {
+      return localStorage.getItem(LOCAL_BG_STYLE_KEY) || "dots";
+    } catch {
+      return "dots";
+    }
+  });
+  const [bgColor, setBgColor] = useState(() => {
+    try {
+      return localStorage.getItem(LOCAL_BG_COLOR_KEY) || "#CBD5E1"; // slate-300
+    } catch {
+      return "#CBD5E1";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_BG_STYLE_KEY, bgStyle);
+    } catch { }
+  }, [bgStyle]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_BG_COLOR_KEY, bgColor);
+    } catch { }
+  }, [bgColor]);
+
   // ---- Helpers ----
   const removeUndefined = (obj) => {
     if (!obj || typeof obj !== "object") return obj;
@@ -152,7 +185,6 @@ const MapEditor = ({ mapId }) => {
     async (newNodes, newEdges) => {
       if (!mapLoaded) return;
       try {
-        // Important: do NOT persist JSX; our nodes state only contains strings in data.title.
         const filteredNodes = (newNodes || []).map((n) => removeUndefined(n));
         const filteredEdges = (newEdges || []).map((e) =>
           removeUndefined({ ...e, style: e.style || {} })
@@ -197,42 +229,22 @@ const MapEditor = ({ mapId }) => {
     [selectedElements]
   );
 
-  // Skip ReactFlow node-change writes while an inline edit is active
-  /*
+  const saveTimeout = useRef(null);
+
   const handleNodeChanges = useCallback(
     (changes) => {
-      if (editingNodeId) return; // prevent churn while typing
+      if (editingNodeId) return;
       setNodes((nds) => {
         const updated = applyNodeChanges(changes, nds);
-        updateMapRow(updated, edges);
+        clearTimeout(saveTimeout.current);
+        saveTimeout.current = setTimeout(() => {
+          updateMapRow(updated, edges);
+        }, 300);
         return updated;
       });
     },
     [edges, updateMapRow, editingNodeId, setNodes]
   );
-  */
-
-  const saveTimeout = useRef(null);
-
-const handleNodeChanges = useCallback(
-  (changes) => {
-    if (editingNodeId) return; 
-
-    setNodes((nds) => {
-      const updated = applyNodeChanges(changes, nds);
-
-      // Debounce the db
-      clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(() => {
-        updateMapRow(updated, edges);
-      }, 300);
-
-      return updated;
-    });
-  },
-  [edges, updateMapRow, editingNodeId, setNodes]
-);
-
 
   const handleEdgeChanges = useCallback(
     (changes) => {
@@ -247,7 +259,6 @@ const handleNodeChanges = useCallback(
 
   const onConnect = useCallback(
     (params) => {
-      // small modal with style choices (same as your original UX)
       const modal = document.createElement("div");
       modal.style.position = "fixed";
       modal.style.top = "50%";
@@ -356,7 +367,7 @@ const handleNodeChanges = useCallback(
 
       const newNode = {
         id: newNodeId,
-        data: { title: `Node ${newNodeId}` }, // <-- store plain string ONLY
+        data: { title: `Node ${newNodeId}` },
         position,
         style: { border: `2px solid ${borderColor}` },
         creator: userId,
@@ -369,7 +380,6 @@ const handleNodeChanges = useCallback(
         return updated;
       });
 
-      // fetch and cache creator profile (so labels show)
       if (userId !== "unknown") {
         const { data: prof } = await supabase
           .from("profiles")
@@ -386,7 +396,7 @@ const handleNodeChanges = useCallback(
   const onNodeDoubleClick = useCallback(
     (_, node) => {
       setEditingNodeId(node.id);
-      setPendingLabel(getNodeTitle(node)); // <-- read from string field
+      setPendingLabel(getNodeTitle(node));
       setNodes((nds) =>
         nds.map((n) => (n.id === node.id ? { ...n, data: { ...n.data, isEditing: true } } : n))
       );
@@ -399,10 +409,8 @@ const handleNodeChanges = useCallback(
   const commitLabel = useCallback(() => {
     if (!editingNodeId) return;
     setNodes((nds) => {
-      const updated = nds.map((n) =>
-        n.id === editingNodeId ? setNodeTitle(n, pendingLabel) : n
-      );
-      updateMapRow(updated, edges); // single write after edit completes
+      const updated = nds.map((n) => (n.id === editingNodeId ? setNodeTitle(n, pendingLabel) : n));
+      updateMapRow(updated, edges);
       return updated;
     });
     setEditingNodeId(null);
@@ -417,7 +425,21 @@ const handleNodeChanges = useCallback(
     updateMapRow(remainingNodes, remainingEdges);
   }, [nodes, edges, selectedElements, updateMapRow, setNodes, setEdges]);
 
-  // ----- Presence heartbeat (write immediately + every 10s) -----
+  const LOCAL_BG_PAGECOLOR_KEY = "mapEditor:bgPageColor";
+
+  const [bgPageColor, setBgPageColor] = useState(() => {
+    try {
+      return localStorage.getItem(LOCAL_BG_PAGECOLOR_KEY) || "#f7fafc"; // default light
+    } catch {
+      return "#f7fafc";
+    }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(LOCAL_BG_PAGECOLOR_KEY, bgPageColor); } catch { }
+  }, [bgPageColor]);
+
+  // ----- Presence heartbeat (DB-based for now; will move to Realtime in Phase C) -----
   useEffect(() => {
     if (!currentUser || !mapLoaded) return;
 
@@ -427,7 +449,7 @@ const handleNodeChanges = useCallback(
       try {
         const { error } = await supabase.from("map_cursors").upsert({
           map_id: mapId,
-          user_id: currentUser.id, // Supabase auth id
+          user_id: currentUser.id,
           x: 0,
           y: 0,
           username: currentUser.user_metadata?.username || "Unknown User",
@@ -440,7 +462,7 @@ const handleNodeChanges = useCallback(
       }
     };
 
-    write(); // immediate
+    write();
     timer = setInterval(write, 10000);
 
     return () => {
@@ -483,7 +505,6 @@ const handleNodeChanges = useCallback(
       ...prev,
       [selectedNode.id]: { ...(prev[selectedNode.id] || {}), link },
     }));
-    // Save on blur below via updateMapRow
   };
 
   // Render node label with creator info and date (display-only JSX)
@@ -500,7 +521,7 @@ const handleNodeChanges = useCallback(
           type="text"
           value={isThisEditing ? pendingLabel : title}
           onFocus={() => setDisableShortcuts(true)}
-          onChange={handleLabelTyping} // local only
+          onChange={handleLabelTyping}
           onBlur={() => {
             setDisableShortcuts(false);
             commitLabel();
@@ -513,29 +534,15 @@ const handleNodeChanges = useCallback(
             }
           }}
           autoFocus
+          className="me-node-input"
           style={{ width: "100%" }}
         />
       );
     }
 
     return (
-      <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <div
-          style={{
-            position: "absolute",
-            top: "-50px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
-            padding: "5px",
-            borderRadius: "5px",
-            fontSize: "10px",
-            whiteSpace: "nowrap",
-            zIndex: 10,
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
+      <div className="me-node" style={{ position: "relative", width: "100%", height: "100%" }}>
+        <div className="me-node-meta">
           {creatorInfo?.profile_picture && (
             <img
               src={creatorInfo.profile_picture}
@@ -545,7 +552,7 @@ const handleNodeChanges = useCallback(
           )}
           <span>{creatorUsername}</span> ({creationDate})
         </div>
-        <span>{title}</span>
+        <span className="me-node-title">{title}</span>
       </div>
     );
   };
@@ -555,11 +562,9 @@ const handleNodeChanges = useCallback(
     let mounted = true;
 
     const load = async () => {
-      // current user
       const { data: u } = await supabase.auth.getUser();
       setCurrentUser(u?.user || null);
 
-      // map row
       const { data: m, error } = await supabase
         .from("maps")
         .select("id, name, description, nodes, edges, node_notes, node_data, last_edited")
@@ -571,7 +576,6 @@ const handleNodeChanges = useCallback(
       }
       if (!mounted) return;
 
-      // apply
       setNodes(m?.nodes || []);
       setEdges(m?.edges || []);
       setMapName(m?.name || "");
@@ -582,7 +586,6 @@ const handleNodeChanges = useCallback(
       setMapLoaded(true);
       prevMapRef.current = m;
 
-      // fetch creators
       const creatorIds = Array.from(
         new Set((m?.nodes || []).map((n) => n.creator).filter((c) => !!c && c !== "unknown"))
       );
@@ -596,10 +599,8 @@ const handleNodeChanges = useCallback(
         setNodeCreators(dict);
       }
 
-      // participants + realtime presence
       await refreshParticipants();
 
-      // subscribe to map row + presence + participants
       const channel = supabase
         .channel("map-" + mapId)
         .on(
@@ -650,7 +651,6 @@ const handleNodeChanges = useCallback(
         .select("id, username, profile_picture")
         .in("id", ids);
 
-      // presence via map_presence view
       const { data: presence } = await supabase
         .from("map_presence")
         .select("user_id, online")
@@ -722,7 +722,7 @@ const handleNodeChanges = useCallback(
     };
   }, []);
 
-  // ----- Cursors: Writes current position. This is throttled to prevent any database quota -----
+  // ----- Cursors: Writes current position (DB-based for now; Phase C will swap to Realtime) -----
   useEffect(() => {
     const onMove = async (event) => {
       if (!reactFlowWrapper.current || !currentUser) return;
@@ -734,12 +734,10 @@ const handleNodeChanges = useCallback(
       const x = event.clientX - bounds.left;
       const y = event.clientY - bounds.top;
 
-      // get a nice display name
       let username = "Unknown User";
       if (currentUser?.user_metadata?.username) {
         username = currentUser.user_metadata.username;
       } else {
-        // or pull from profiles once (cacheable)
         const { data: prof } = await supabase
           .from("profiles")
           .select("username")
@@ -766,15 +764,26 @@ const handleNodeChanges = useCallback(
   // ---- UI Handlers ----
   const refreshPage = () => window.location.reload();
 
+  // === MiniMap helpers ===
+  const deriveNodeColor = useCallback((node) => {
+    // Try to read border color from "2px solid <color>"
+    const border = node?.style?.border || "";
+    const parts = border.split(" ");
+    const color = parts[2];
+    return color || "#94A3B8"; // slate-400 fallback
+  }, []);
+
   return (
     <div
       ref={reactFlowWrapper}
-      style={{ backgroundColor: "#d9fdd3", width: "100%", height: "100vh", position: "relative" }}
+      className="map-editor"
+      style={{ height: "100vh" }}
     >
-      <div style={{ width: "80%", height: "100%" }}>
+      {/* LEFT: Canvas */}
+      <div className="me-canvas" style={{ backgroundColor: bgPageColor }}>
         <Panel position="top-left">
           <div
-            className="description"
+            className="description me-stats"
             style={{
               padding: "2px",
               background: "linear-gradient(to bottom, #4caf50, #81c784)",
@@ -812,17 +821,17 @@ const handleNodeChanges = useCallback(
           </div>
         </Panel>
 
+        {/* ReactFlow */}
         <ReactFlow
           nodes={nodes.map((node) => ({
             ...node,
-            // Inject display-only label from current node state
             data: {
               ...node.data,
               label: renderNode(node),
             },
           }))}
           edges={edges}
-          onNodesChange={handleNodeChanges /* ReactFlow internal state updates */}
+          onNodesChange={handleNodeChanges}
           onEdgesChange={handleEdgeChanges}
           onContextMenu={onContextMenu}
           onConnect={onConnect}
@@ -837,222 +846,42 @@ const handleNodeChanges = useCallback(
           onEdgeDoubleClick={onEdgeDoubleClick}
           selectNodesOnDrag
           fitView
-        />
+        >
+          {/* Phase A: Background chooser (per-user) */}
+          {bgStyle !== "none" && (
+            <Background
+              id="editor-bg"
+              variant={bgStyle === "dots" ? "dots" : "lines"}
+              gap={24}
+              size={1}
+              color={bgColor}
+            />
+          )}
 
-        {/* Edge Details Panel */}
-        {showEdgeDetails && selectedEdge && (
-          <div
-            ref={edgeDetailsPanelRef}
+          {/* Force-visible MiniMap (anchored bottom-left) */}
+          <MiniMap
+            className="me-minimap"
             style={{
-              zIndex: 2000,
               position: "absolute",
-              top: 0,
-              right: 0,
-              width: "300px",
-              padding: "20px",
-              background: "white",
-              height: "100%",
-              overflowY: "auto",
-              boxShadow: "0 4px 10px rgba(0, 0, 0, 0.2)",
-              borderRadius: "8px 0 0 8px",
-              transform: showEdgeDetails ? "translateX(0)" : "translateX(100%)",
-              transition: "transform 0.3s ease-in-out",
-              fontFamily: "'Arial', sans-serif",
+              left: 12,
+              bottom: 12,
+              width: 220,
+              height: 140,
+              background: "rgba(255,255,255,.92)",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              boxShadow: "0 8px 20px rgba(2,6,23,.10)",
+              zIndex: 5,
             }}
-          >
-            <button
-              onClick={() => setShowEdgeDetails(false)}
-              style={{
-                position: "absolute",
-                top: "10px",
-                left: "10px",
-                background: "#e57373",
-                color: "white",
-                border: "none",
-                borderRadius: "20px",
-                padding: "8px 12px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "0.8rem",
-                boxShadow: "0 2px 5px rgba(0, 0, 0, 0.2)",
-              }}
-            >
-              Close
-            </button>
+            nodeColor={deriveNodeColor}
+            nodeBorderRadius={6}
+            pannable
+            zoomable
+          />
 
-            <div style={{ marginBottom: "10px", marginTop: "30px" }}>
-              <h3 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "bold" }}>Edge Details</h3>
-            </div>
+        </ReactFlow>
 
-            {/* Label */}
-            <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>Label:</label>
-              <input
-                type="text"
-                value={selectedEdge.label || ""}
-                onChange={(e) => {
-                  const updated = edges.map((edge) =>
-                    edge.id === selectedEdge.id ? { ...edge, label: e.target.value } : edge
-                  );
-                  setEdges(updated);
-                  setSelectedEdge({ ...selectedEdge, label: e.target.value });
-                  updateMapRow(nodes, updated);
-                }}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid #ccc",
-                  backgroundColor: "#f9f9f9",
-                  fontSize: "1rem",
-                  boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.1)",
-                }}
-              />
-            </div>
-
-            {/* Color */}
-            <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>Color:</label>
-              <input
-                type="color"
-                value={selectedEdge.style?.stroke || "#000000"}
-                onChange={(e) => {
-                  const updated = edges.map((edge) =>
-                    edge.id === selectedEdge.id
-                      ? { ...edge, style: { ...edge.style, stroke: e.target.value } }
-                      : edge
-                  );
-                  setEdges(updated);
-                  setSelectedEdge({
-                    ...selectedEdge,
-                    style: { ...selectedEdge.style, stroke: e.target.value },
-                  });
-                  updateMapRow(nodes, updated);
-                }}
-                style={{
-                  width: "100%",
-                  height: "40px",
-                  borderRadius: "8px",
-                  border: "none",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                }}
-              />
-            </div>
-
-            {/* Type buttons */}
-            <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>Type:</label>
-              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                <button
-                  onClick={() => {
-                    const updated = edges.map((edge) =>
-                      edge.id === selectedEdge.id
-                        ? { ...edge, style: { strokeDasharray: undefined }, markerEnd: undefined }
-                        : edge
-                    );
-                    setEdges(updated);
-                    setSelectedEdge({ ...selectedEdge, style: { strokeDasharray: undefined }, markerEnd: undefined });
-                    updateMapRow(nodes, updated);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "5px",
-                    borderRadius: "8px",
-                    border: "1px solid #ddd",
-                    cursor: "pointer",
-                    backgroundColor: selectedEdge.style?.strokeDasharray ? "#fff" : "#4caf50",
-                    color: selectedEdge.style?.strokeDasharray ? "#333" : "#fff",
-                  }}
-                >
-                  Solid
-                  <svg height="10" width="50">
-                    <line x1="0" y1="5" x2="50" y2="5" stroke="currentColor" strokeWidth="2" />
-                  </svg>
-                </button>
-
-                <button
-                  onClick={() => {
-                    const updated = edges.map((edge) =>
-                      edge.id === selectedEdge.id
-                        ? { ...edge, style: { strokeDasharray: "5,5" }, markerEnd: undefined }
-                        : edge
-                    );
-                    setEdges(updated);
-                    setSelectedEdge({ ...selectedEdge, style: { strokeDasharray: "5,5" }, markerEnd: undefined });
-                    updateMapRow(nodes, updated);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "5px",
-                    borderRadius: "8px",
-                    border: "1px solid #ddd",
-                    cursor: "pointer",
-                    backgroundColor:
-                      selectedEdge.style?.strokeDasharray === "5,5" ? "#4caf50" : "#fff",
-                    color: selectedEdge.style?.strokeDasharray === "5,5" ? "#fff" : "#333",
-                  }}
-                >
-                  Dashed
-                  <svg height="10" width="50">
-                    <line
-                      x1="0"
-                      y1="5"
-                      x2="50"
-                      y2="5"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeDasharray="5,5"
-                    />
-                  </svg>
-                </button>
-
-                <button
-                  onClick={() => {
-                    const updated = edges.map((edge) =>
-                      edge.id === selectedEdge.id
-                        ? { ...edge, markerEnd: { type: "arrowclosed" }, style: { strokeDasharray: undefined } }
-                        : edge
-                    );
-                    setEdges(updated);
-                    setSelectedEdge({
-                      ...selectedEdge,
-                      markerEnd: { type: "arrowclosed" },
-                      style: { strokeDasharray: undefined },
-                    });
-                    updateMapRow(nodes, updated);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "5px",
-                    borderRadius: "8px",
-                    border: "1px solid #ddd",
-                    cursor: "pointer",
-                    backgroundColor: selectedEdge.markerEnd?.type ? "#4caf50" : "#fff",
-                    color: selectedEdge.markerEnd?.type ? "#fff" : "#333",
-                  }}
-                >
-                  Arrow
-                  <svg height="10" width="50">
-                    <line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" strokeWidth="2" />
-                    <polygon points="40,0 50,5 40,10" fill="currentColor" stroke="currentColor" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Live cursors*/}
+        {/* Live cursors */}
         {Object.entries(cursors).map(([id, cursor]) => (
           <div
             key={id}
@@ -1065,25 +894,8 @@ const handleNodeChanges = useCallback(
               zIndex: 1000,
             }}
           >
-            {/*  */}
-            <div style={{ width: 10, height: 10, background: cursor.color, borderRadius: "50%" }} />
-            {/*  */}
-            <div
-              style={{
-                marginTop: 6,
-                padding: "4px 8px",
-                background: "#2C5F2D",
-                color: "white",
-                fontWeight: "bold",
-                fontSize: "12px",
-                borderRadius: "8px",
-                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
-                whiteSpace: "nowrap",
-                textAlign: "center",
-              }}
-            >
-              {cursor.username}
-            </div>
+            <div className="cursor-dot" style={{ background: cursor.color }} />
+            <div className="cursor-label">{cursor.username}</div>
           </div>
         ))}
 
@@ -1098,8 +910,9 @@ const handleNodeChanges = useCallback(
         )}
       </div>
 
-      {/* Right panel: map + node details + participants */}
+      {/* RIGHT: Side panel */}
       <div
+        className="me-sidepanel"
         style={{
           zIndex: 1000,
           width: "20%",
@@ -1115,9 +928,70 @@ const handleNodeChanges = useCallback(
       >
         <h3 style={{ color: "#2C5F2D" }}>Learning Space Details</h3>
 
+        {/* Phase A: Canvas Settings (per-user) */}
+        <div className="me-canvas-settings" style={{ marginBottom: 12 }}>
+          <div className="me-field">
+            <span className="me-label">Background</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="radio"
+                  name="bgStyle"
+                  value="dots"
+                  checked={bgStyle === "dots"}
+                  onChange={() => setBgStyle("dots")}
+                />
+                Dots
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="radio"
+                  name="bgStyle"
+                  value="lines"
+                  checked={bgStyle === "lines"}
+                  onChange={() => setBgStyle("lines")}
+                />
+                Lines
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="radio"
+                  name="bgStyle"
+                  value="none"
+                  checked={bgStyle === "none"}
+                  onChange={() => setBgStyle("none")}
+                />
+                None
+              </label>
+            </div>
+          </div>
+
+          <div className="me-field">
+            <label className="me-label">Canvas color</label>
+            <input
+              type="color"
+              className="me-color"
+              value={bgPageColor}
+              onChange={(e) => setBgPageColor(e.target.value)}
+              title="Background fill behind the grid"
+            />
+          </div>
+
+          <div className="me-field">
+            <label className="me-label">Grid color</label>
+            <input
+              type="color"
+              className="me-color"
+              value={bgColor}
+              onChange={(e) => setBgColor(e.target.value)}
+            />
+          </div>
+        </div>
+
         <div style={{ marginBottom: "10px", textAlign: "center" }}>
           <button
             onClick={() => window.location.reload()}
+            className="btn-primary"
             style={{
               padding: "10px 20px",
               backgroundColor: "#4caf50",
@@ -1135,125 +1009,48 @@ const handleNodeChanges = useCallback(
         </div>
 
         {/* Map Name */}
-        <div style={{ marginBottom: "15px" }}>
-          <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#4caf50" }}>
-            Learning Space Name:
-          </label>
+        <div className="me-field">
+          <label className="me-label">Learning Space Name:</label>
           <input
             type="text"
             value={mapName}
             onChange={(e) => setMapName(e.target.value)}
             onBlur={() => updateMapRow(nodes, edges)}
             placeholder="Enter Learning Space name"
-            style={{
-              width: "100%",
-              padding: "10px",
-              borderRadius: "8px",
-              border: "1px solid #ccc",
-              backgroundColor: "#f9f9f9",
-              fontSize: "1rem",
-              boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.1)",
-            }}
+            className="me-input"
           />
         </div>
 
         {/* Map Description */}
-        <div style={{ marginBottom: "15px" }}>
-          <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#4caf50" }}>
-            Learning Space Description:
-          </label>
+        <div className="me-field">
+          <label className="me-label">Learning Space Description:</label>
           <textarea
             value={mapDescription}
             onChange={(e) => setMapDescription(e.target.value)}
             onBlur={() => updateMapRow(nodes, edges)}
             placeholder="Enter Learning Space description"
-            style={{
-              width: "100%",
-              height: "80px",
-              padding: "10px",
-              borderRadius: "8px",
-              border: "1px solid #ccc",
-              backgroundColor: "#f9f9f9",
-              fontSize: "1rem",
-              resize: "none",
-              boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.1)",
-            }}
+            className="me-textarea"
           />
         </div>
 
         {/* Map ID */}
-        <div style={{ marginBottom: "15px" }}>
-          <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#4caf50" }}>
-            Learning Space ID:
-          </label>
-          <div
-            style={{
-              padding: "10px",
-              backgroundColor: "#f9f9f9",
-              borderRadius: "8px",
-              fontSize: "1rem",
-              boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            {mapId}
-          </div>
+        <div className="me-field">
+          <label className="me-label">Learning Space ID:</label>
+          <div className="me-chip">{mapId}</div>
         </div>
 
         {/* Last Edited */}
-        <div style={{ marginBottom: "15px" }}>
-          <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#4caf50" }}>
-            Last Edited:
-          </label>
-          <div
-            style={{
-              padding: "10px",
-              backgroundColor: "#f9f9f9",
-              borderRadius: "8px",
-              fontSize: "1rem",
-              boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            {lastEdited}
-          </div>
+        <div className="me-field">
+          <label className="me-label">Last Edited:</label>
+          <div className="me-chip">{lastEdited}</div>
         </div>
 
         {/* Node details panel */}
         <div
-          style={{
-            zIndex: 1000,
-            position: "absolute",
-            top: 0,
-            right: 0,
-            width: "250px",
-            padding: "20px",
-            background: "white",
-            height: "100%",
-            overflowY: "auto",
-            boxShadow: "0 4px 10px rgba(0, 0, 0, 0.2)",
-            borderRadius: "8px 0 0 8px",
-            transform: showNodeDetails ? "translateX(0)" : "translateX(100%)",
-            transition: "transform 0.3s ease-in-out",
-            fontFamily: "'Arial', sans-serif",
-          }}
+          className={`drawer ${showNodeDetails ? "open" : ""}`}
           ref={nodeDetailsPanelRef}
         >
-          <button
-            onClick={() => setShowNodeDetails(false)}
-            style={{
-              position: "absolute",
-              top: "10px",
-              left: "10px",
-              background: "#e57373",
-              color: "white",
-              border: "none",
-              borderRadius: "20px",
-              padding: "8px 12px",
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: "0.8rem",
-              boxShadow: "0 2px 5px rgba(0, 0, 0, 0.2)",
-            }}
-          >
+          <button onClick={() => setShowNodeDetails(false)} className="btn-close">
             Close
           </button>
 
@@ -1289,103 +1086,56 @@ const handleNodeChanges = useCallback(
               </div>
 
               {/* Node Name */}
-              <div style={{ marginBottom: "20px", marginTop: "30px" }}>
-                <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>Node Name:</label>
-                <div
-                  style={{
-                    padding: "10px",
-                    backgroundColor: "#f9f9f9",
-                    borderRadius: "8px",
-                    fontSize: "1rem",
-                    boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.1)",
-                  }}
-                >
-                  {getNodeTitle(selectedNode)}
-                </div>
+              <div className="me-field" style={{ marginTop: 30 }}>
+                <label className="me-label">Node Name:</label>
+                <div className="me-chip">{getNodeTitle(selectedNode)}</div>
               </div>
 
               {/* Creation Date */}
-              <div style={{ marginBottom: "15px" }}>
-                <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>
-                  Creation Date:
-                </label>
-                <div
-                  style={{
-                    padding: "10px",
-                    backgroundColor: "#f9f9f9",
-                    borderRadius: "8px",
-                    fontSize: "1rem",
-                    boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.1)",
-                  }}
-                >
-                  {new Date(selectedNode.creationTimestamp).toLocaleString()}
-                </div>
+              <div className="me-field">
+                <label className="me-label">Creation Date:</label>
+                <div className="me-chip">{new Date(selectedNode.creationTimestamp).toLocaleString()}</div>
               </div>
 
               {/* Border Color Picker */}
-              <div style={{ marginBottom: "15px" }}>
-                <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>
-                  Border Color:
-                </label>
+              <div className="me-field">
+                <label className="me-label">Border Color:</label>
                 <input
                   type="color"
                   value={borderColor}
                   onChange={(e) => handleBorderColorChange(e.target.value)}
-                  style={{
-                    width: "100%",
-                    height: "40px",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                  }}
+                  className="me-color"
                 />
               </div>
 
               {/* Notes */}
-              <div style={{ marginBottom: "15px" }}>
-                <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>Notes:</label>
+              <div className="me-field">
+                <label className="me-label">Notes:</label>
                 <textarea
                   ref={noteInputRef}
                   value={nodeNotes[selectedNode.id] || ""}
                   onChange={handleNoteChange}
                   onBlur={handleNoteBlur}
                   placeholder="Add a note for this node"
-                  style={{
-                    width: "100%",
-                    height: "60px",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    border: "1px solid #ccc",
-                    backgroundColor: "#f9f9f9",
-                    resize: "none",
-                    fontSize: "1rem",
-                  }}
+                  className="me-textarea"
+                  style={{ height: 60 }}
                 />
               </div>
 
               {/* Link */}
-              <div style={{ marginBottom: "15px" }}>
-                <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>Link:</label>
+              <div className="me-field">
+                <label className="me-label">Link:</label>
                 <input
                   type="text"
                   value={nodeData[selectedNode.id]?.link || ""}
                   onChange={(e) => handleLinkChange(e.target.value)}
                   onBlur={() => updateMapRow(nodes, edges)}
                   placeholder="Add a link"
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    border: "1px solid #ccc",
-                    backgroundColor: "#f9f9f9",
-                  }}
+                  className="me-input"
                 />
                 {nodeData[selectedNode.id]?.link && (
-                  <div style={{ marginTop: "15px" }}>
-                    <label style={{ fontWeight: "bold", color: "#4caf50", fontSize: "1rem" }}>
-                      View Link:
-                    </label>
+                  <div style={{ marginTop: 15 }}>
+                    <label className="me-label">View Link:</label>
                     <a
                       href={nodeData[selectedNode.id].link}
                       target="_blank"
@@ -1393,7 +1143,7 @@ const handleNodeChanges = useCallback(
                       style={{
                         display: "block",
                         marginTop: "10px",
-                        color: "#4caf50",
+                        color: "#0ea5e9",
                         textDecoration: "underline",
                         wordBreak: "break-word",
                         fontSize: "1rem",
@@ -1407,6 +1157,118 @@ const handleNodeChanges = useCallback(
             </div>
           )}
         </div>
+
+        {/* Edge Details Panel */}
+        {showEdgeDetails && selectedEdge && (
+          <div className={`drawer open`} ref={edgeDetailsPanelRef}>
+            <button onClick={() => setShowEdgeDetails(false)} className="btn-close">
+              Close
+            </button>
+
+            <div style={{ marginBottom: "10px", marginTop: "30px" }}>
+              <h3 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "bold" }}>Edge Details</h3>
+            </div>
+
+            {/* Label */}
+            <div className="me-field">
+              <label className="me-label">Label:</label>
+              <input
+                type="text"
+                value={selectedEdge.label || ""}
+                onChange={(e) => {
+                  const updated = edges.map((edge) =>
+                    edge.id === selectedEdge.id ? { ...edge, label: e.target.value } : edge
+                  );
+                  setEdges(updated);
+                  setSelectedEdge({ ...selectedEdge, label: e.target.value });
+                  updateMapRow(nodes, updated);
+                }}
+                className="me-input"
+              />
+            </div>
+
+            {/* Color */}
+            <div className="me-field">
+              <label className="me-label">Color:</label>
+              <input
+                type="color"
+                value={selectedEdge.style?.stroke || "#000000"}
+                onChange={(e) => {
+                  const updated = edges.map((edge) =>
+                    edge.id === selectedEdge.id
+                      ? { ...edge, style: { ...edge.style, stroke: e.target.value } }
+                      : edge
+                  );
+                  setEdges(updated);
+                  setSelectedEdge({
+                    ...selectedEdge,
+                    style: { ...selectedEdge.style, stroke: e.target.value },
+                  });
+                  updateMapRow(nodes, updated);
+                }}
+                className="me-color"
+              />
+            </div>
+
+            {/* Type buttons */}
+            <div className="me-field">
+              <label className="me-label">Type:</label>
+              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                <button
+                  onClick={() => {
+                    const updated = edges.map((edge) =>
+                      edge.id === selectedEdge.id
+                        ? { ...edge, style: { strokeDasharray: undefined }, markerEnd: undefined }
+                        : edge
+                    );
+                    setEdges(updated);
+                    setSelectedEdge({ ...selectedEdge, style: { strokeDasharray: undefined }, markerEnd: undefined });
+                    updateMapRow(nodes, updated);
+                  }}
+                  className="btn-primary"
+                >
+                  Solid
+                </button>
+
+                <button
+                  onClick={() => {
+                    const updated = edges.map((edge) =>
+                      edge.id === selectedEdge.id
+                        ? { ...edge, style: { strokeDasharray: "5,5" }, markerEnd: undefined }
+                        : edge
+                    );
+                    setEdges(updated);
+                    setSelectedEdge({ ...selectedEdge, style: { strokeDasharray: "5,5" }, markerEnd: undefined });
+                    updateMapRow(nodes, updated);
+                  }}
+                  className="btn-primary"
+                >
+                  Dashed
+                </button>
+
+                <button
+                  onClick={() => {
+                    const updated = edges.map((edge) =>
+                      edge.id === selectedEdge.id
+                        ? { ...edge, markerEnd: { type: "arrowclosed" }, style: { strokeDasharray: undefined } }
+                        : edge
+                    );
+                    setEdges(updated);
+                    setSelectedEdge({
+                      ...selectedEdge,
+                      markerEnd: { type: "arrowclosed" },
+                      style: { strokeDasharray: undefined },
+                    });
+                    updateMapRow(nodes, updated);
+                  }}
+                  className="btn-primary"
+                >
+                  Arrow
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Participants box (Supabase) */}
         <div

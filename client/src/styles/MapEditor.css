@@ -222,3 +222,39 @@ MapEditor.css — harmonized with Login.css + Dashboard.css
 .react-flow__handle-target {
   background: #0284c7 !important;
 }
+
+
+/* === Phase 1 additions === */
+
+/* MiniMap card in bottom-left= */
+.me-minimap{
+  background: rgba(255,255,255,.9);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 8px;
+  box-shadow: var(--shadow-1);
+  backdrop-filter: blur(6px);
+}
+
+/* Small settings card inside the side panel */
+.me-canvas-settings{
+  background: rgba(255,255,255,.9);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  box-shadow: var(--shadow-1);
+}
+
+.me-minimap{
+  background: rgba(255,255,255,.92);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  backdrop-filter: blur(6px);
+}
+
+/* Optional: ensure RF panels don’t get weirdly offset by global styles */
+.react-flow__panel {
+  pointer-events: auto;
+}
+
