@@ -10,6 +10,7 @@ import ReactFlow, {
   Panel,
   MiniMap,
   Background,
+  useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { supabase } from "../supabaseClient";
@@ -102,10 +103,22 @@ const predefinedColors = [
 const LOCAL_BG_STYLE_KEY = "mapEditor:bgStyle";
 const LOCAL_BG_COLOR_KEY = "mapEditor:bgColor";
 
+const LOCAL_CURSOR_SHOW_KEY = "mapEditor:showMyCursor";
+const LOCAL_CURSOR_FPS_KEY = "mapEditor:cursorFps";
+
+const colorFromId = (userId) => {
+  if (!userId) return "#0ea5e9";
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0;
+  const palette = ["#FF5733", "#33FF57", "#3357FF", "#FF33A8", "#A833FF", "#33FFF5", "#FFC233", "#FF3333", "#33FF8E", "#8E33FF", "#FF8E33", "#33A8FF", "#57FF33"];
+  return palette[h % palette.length];
+};
+
 const MapEditor = ({ mapId }) => {
   // React Flow
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const rf = useReactFlow();                             // <-- NEW: instance for transforms
 
   // Map metadata
   const [mapName, setMapName] = useState("");
@@ -131,14 +144,18 @@ const MapEditor = ({ mapId }) => {
   const nodeDetailsPanelRef = useRef(null);
   const edgeDetailsPanelRef = useRef(null);
 
-  // Buffered inline editing (prevents ResizeObserver churn)
+  // Buffered inline editing
   const [editingNodeId, setEditingNodeId] = useState(null);
   const [pendingLabel, setPendingLabel] = useState("");
 
   // Node creators (profiles)
   const [nodeCreators, setNodeCreators] = useState({}); // { uid: profile }
   const [participants, setParticipants] = useState([]); // [{id, username, profile_picture, online}]
-  const [cursors, setCursors] = useState({}); // { user_id: { x, y, username, color }}
+  const [cursors, setCursors] = useState({}); // { userId: { x, y, username, color } }
+
+  // Realtime presence roster (live)
+  const [presenceUsers, setPresenceUsers] = useState({}); // { userId: { userId, username, color } }
+  const realtimeChannelRef = useRef(null);                // <-- NEW
 
   // Refs to avoid noisy updates
   const prevMapRef = useRef(null);
@@ -147,32 +164,53 @@ const MapEditor = ({ mapId }) => {
   // Current user
   const [currentUser, setCurrentUser] = useState(null);
 
-  // === Phase A: Background chooser (per-user) ===
+  // === Background chooser (per-user) ===
   const [bgStyle, setBgStyle] = useState(() => {
-    try {
-      return localStorage.getItem(LOCAL_BG_STYLE_KEY) || "dots";
-    } catch {
-      return "dots";
-    }
+    try { return localStorage.getItem(LOCAL_BG_STYLE_KEY) || "dots"; }
+    catch { return "dots"; }
   });
   const [bgColor, setBgColor] = useState(() => {
+    try { return localStorage.getItem(LOCAL_BG_COLOR_KEY) || "#CBD5E1"; }
+    catch { return "#CBD5E1"; }
+  });
+
+  // --- Cursor UI: show own cursor + FPS throttle ---
+  const [showMyCursor, setShowMyCursor] = useState(() => {
     try {
-      return localStorage.getItem(LOCAL_BG_COLOR_KEY) || "#CBD5E1"; // slate-300
+      const v = localStorage.getItem(LOCAL_CURSOR_SHOW_KEY);
+      return v === null ? true : v === "true";
     } catch {
-      return "#CBD5E1";
+      return true;
     }
   });
 
-  useEffect(() => {
+  const [cursorFps, setCursorFps] = useState(() => {
     try {
-      localStorage.setItem(LOCAL_BG_STYLE_KEY, bgStyle);
-    } catch { }
+      const v = parseInt(localStorage.getItem(LOCAL_CURSOR_FPS_KEY), 10);
+      return Number.isFinite(v) ? Math.min(60, Math.max(5, v)) : 20; // default 20 FPS
+    } catch {
+      return 20;
+    }
+  });
+
+
+  //  USEEFFECTS: Choose FPS for cursor updates + show/hide own cursor
+  useEffect(() => {
+    try { localStorage.setItem(LOCAL_CURSOR_SHOW_KEY, String(showMyCursor)); } catch { }
+  }, [showMyCursor]);
+
+  useEffect(() => {
+    try { localStorage.setItem(LOCAL_CURSOR_FPS_KEY, String(cursorFps)); } catch { }
+  }, [cursorFps]);
+
+
+
+  useEffect(() => {
+    try { localStorage.setItem(LOCAL_BG_STYLE_KEY, bgStyle); } catch { }
   }, [bgStyle]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(LOCAL_BG_COLOR_KEY, bgColor);
-    } catch { }
+    try { localStorage.setItem(LOCAL_BG_COLOR_KEY, bgColor); } catch { }
   }, [bgColor]);
 
   // ---- Helpers ----
@@ -428,47 +466,28 @@ const MapEditor = ({ mapId }) => {
   const LOCAL_BG_PAGECOLOR_KEY = "mapEditor:bgPageColor";
 
   const [bgPageColor, setBgPageColor] = useState(() => {
+    try { return localStorage.getItem(LOCAL_BG_PAGECOLOR_KEY) || "#f7fafc"; }
+    catch { return "#f7fafc"; }
+  });
+
+  // --- MiniMap toggle (on/off) ---
+  const LOCAL_MINIMAP_ENABLED_KEY = "mapEditor:minimapEnabled";
+  const [minimapEnabled, setMinimapEnabled] = useState(() => {
     try {
-      return localStorage.getItem(LOCAL_BG_PAGECOLOR_KEY) || "#f7fafc"; // default light
+      const v = localStorage.getItem(LOCAL_MINIMAP_ENABLED_KEY);
+      return v === null ? true : v === "true";
     } catch {
-      return "#f7fafc";
+      return true;
     }
   });
 
   useEffect(() => {
+    try { localStorage.setItem(LOCAL_MINIMAP_ENABLED_KEY, String(minimapEnabled)); } catch { }
+  }, [minimapEnabled]);
+
+  useEffect(() => {
     try { localStorage.setItem(LOCAL_BG_PAGECOLOR_KEY, bgPageColor); } catch { }
   }, [bgPageColor]);
-
-  // ----- Presence heartbeat (DB-based for now; will move to Realtime in Phase C) -----
-  useEffect(() => {
-    if (!currentUser || !mapLoaded) return;
-
-    let timer;
-
-    const write = async () => {
-      try {
-        const { error } = await supabase.from("map_cursors").upsert({
-          map_id: mapId,
-          user_id: currentUser.id,
-          x: 0,
-          y: 0,
-          username: currentUser.user_metadata?.username || "Unknown User",
-          color: "#FF5733",
-          updated_at: new Date().toISOString(),
-        });
-        if (error) console.warn("cursor heartbeat error:", error.message);
-      } catch (e) {
-        console.warn("cursor heartbeat exception:", e);
-      }
-    };
-
-    write();
-    timer = setInterval(write, 10000);
-
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [currentUser, mapLoaded, mapId]);
 
   // ----- Shortcuts -----
   useEffect(() => {
@@ -557,7 +576,7 @@ const MapEditor = ({ mapId }) => {
     );
   };
 
-  // ----- Load map + subscribe -----
+  // ----- Load map + subscribe (durable data via Postgres; presence/cursors via Realtime) -----
   useEffect(() => {
     let mounted = true;
 
@@ -601,6 +620,7 @@ const MapEditor = ({ mapId }) => {
 
       await refreshParticipants();
 
+      // Subscribe to map row updates (durable data only)
       const channel = supabase
         .channel("map-" + mapId)
         .on(
@@ -619,11 +639,7 @@ const MapEditor = ({ mapId }) => {
             );
           }
         )
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "map_cursors", filter: `map_id=eq.${mapId}` },
-          () => refreshCursors()
-        )
+        // realtime is handled by presence and broadcast channels below
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "map_participants", filter: `map_id=eq.${mapId}` },
@@ -651,6 +667,7 @@ const MapEditor = ({ mapId }) => {
         .select("id, username, profile_picture")
         .in("id", ids);
 
+      // presence via map_presence view (still okay as a fallback)
       const { data: presence } = await supabase
         .from("map_presence")
         .select("user_id, online")
@@ -668,24 +685,6 @@ const MapEditor = ({ mapId }) => {
       setParticipants(list);
     };
 
-    const refreshCursors = async () => {
-      const { data: rows } = await supabase
-        .from("map_cursors")
-        .select("user_id, x, y, username, color, updated_at")
-        .eq("map_id", mapId);
-
-      const next = {};
-      (rows || []).forEach((r, idx) => {
-        next[r.user_id] = {
-          x: r.x,
-          y: r.y,
-          username: r.username || "Unknown User",
-          color: r.color || predefinedColors[idx % predefinedColors.length],
-        };
-      });
-      setCursors(next);
-    };
-
     load();
 
     return () => {
@@ -693,6 +692,56 @@ const MapEditor = ({ mapId }) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapId]);
+
+  // ----- Realtime presence + cursor broadcast (Phase C) -----
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Build (or reuse) Realtime channel with presence
+    const chan = supabase.channel(`map:${mapId}`, {
+      config: { presence: { key: currentUser.id } },
+    });
+
+    // Presence roster sync
+    chan.on("presence", { event: "sync" }, () => {
+      const state = chan.presenceState();
+      const next = {};
+      Object.values(state).forEach((arr) => {
+        arr.forEach((m) => { next[m.userId] = m; });
+      });
+      setPresenceUsers(next);
+
+      // Reflect online in participants list immediately (optional)
+      setParticipants((prev) => prev.map((p) => ({ ...p, online: !!next[p.id] })));
+    });
+
+    // Receive cursor broadcasts
+    chan.on("broadcast", { event: "cursor" }, ({ payload }) => {
+      const { userId, x, y, username, color } = payload || {};
+      if (!userId || userId === currentUser.id) return; // ignore self
+      setCursors((prev) => ({ ...prev, [userId]: { x, y, username, color } }));
+    });
+
+    // Subscribe & track our presence metadata
+    const myColor = colorFromId(currentUser.id);
+    const myUsername =
+      currentUser.user_metadata?.username ||
+      currentUser.email?.split("@")[0] ||
+      "Unknown User";
+
+    chan.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await chan.track({ userId: currentUser.id, username: myUsername, color: myColor });
+      }
+    });
+
+    realtimeChannelRef.current = chan;
+
+    return () => {
+      try { chan.unsubscribe(); } catch { }
+      realtimeChannelRef.current = null;
+    };
+  }, [currentUser, mapId]);
 
   // close panels when clicking outside them
   useEffect(() => {
@@ -722,56 +771,74 @@ const MapEditor = ({ mapId }) => {
     };
   }, []);
 
-  // ----- Cursors: Writes current position (DB-based for now; Phase C will swap to Realtime) -----
-  useEffect(() => {
-    const onMove = async (event) => {
-      if (!reactFlowWrapper.current || !currentUser) return;
-      const now = Date.now();
-      if (now - lastCursorSentRef.current < 50) return; // ~20fps throttle
+  // ----- Cursors: broadcast from pane (Realtime) -----
+  const handlePaneMouseMove = useCallback(
+    (evt) => {
+      if (!reactFlowWrapper.current || !currentUser || !rf) return;
+
+      const minInterval = 1000 / Math.max(5, Math.min(60, cursorFps)); // 5..60 FPS
+      const now = performance.now();
+      if (now - lastCursorSentRef.current < minInterval) return;
       lastCursorSentRef.current = now;
 
+      // screen -> flow coords
       const bounds = reactFlowWrapper.current.getBoundingClientRect();
-      const x = event.clientX - bounds.left;
-      const y = event.clientY - bounds.top;
+      const px = evt.clientX - bounds.left;
+      const py = evt.clientY - bounds.top;
+      const { x, y } = rf.project({ x: px, y: py });
 
-      let username = "Unknown User";
-      if (currentUser?.user_metadata?.username) {
-        username = currentUser.user_metadata.username;
-      } else {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", currentUser.id)
-          .single();
-        if (prof?.username) username = prof.username;
+      const userId = currentUser.id;
+      const username =
+        currentUser.user_metadata?.username ||
+        currentUser.email?.split("@")[0] ||
+        "Unknown User";
+      const color = colorFromId(userId);
+
+      const chan = realtimeChannelRef.current;
+      if (chan) {
+        chan.send({
+          type: "broadcast",
+          event: "cursor",
+          payload: { x, y, userId, username, color, ts: Date.now() },
+        });
       }
 
-      await supabase.from("map_cursors").upsert({
-        map_id: mapId,
-        user_id: currentUser.id,
-        x,
-        y,
-        username,
-        color: "#FF5733",
-        updated_at: new Date().toISOString(),
-      });
-    };
+      // Draw my own cursor locally only if enabled (still broadcast regardless)
+      if (showMyCursor) {
+        setCursors((prev) => ({ ...prev, [userId]: { x, y, username, color } }));
+      } else {
+        // if previously drawn and now disabled, clear my local dot
+        setCursors((prev) => {
+          if (!prev[userId]) return prev;
+          const { [userId]: _mine, ...rest } = prev;
+          return rest;
+        });
+      }
+    },
+    [currentUser, rf, cursorFps, showMyCursor]
+  );
 
-    document.addEventListener("mousemove", onMove);
-    return () => document.removeEventListener("mousemove", onMove);
-  }, [currentUser, mapId]);
 
   // ---- UI Handlers ----
   const refreshPage = () => window.location.reload();
 
   // === MiniMap helpers ===
   const deriveNodeColor = useCallback((node) => {
-    // Try to read border color from "2px solid <color>"
     const border = node?.style?.border || "";
     const parts = border.split(" ");
     const color = parts[2];
-    return color || "#94A3B8"; // slate-400 fallback
+    return color || "#94A3B8";
   }, []);
+
+  // Helper: flow -> screen (to render absolute cursor at correct spot)
+  const flowToScreen = useCallback(
+    ({ x, y }) => {
+      if (!rf) return { left: x, top: y };
+      const { x: tx, y: ty, zoom } = rf.getViewport();
+      return { left: x * zoom + tx, top: y * zoom + ty };
+    },
+    [rf]
+  );
 
   return (
     <div
@@ -795,27 +862,13 @@ const MapEditor = ({ mapId }) => {
           >
             <p>Keyboard Shortcuts:</p>
             <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: "10px" }}>
-              <li>
-                <strong>N:</strong> Add a new node
-              </li>
-              <li>
-                <strong>Del/Backspace:</strong> Delete selected node
-              </li>
-              <li>
-                <strong>Right-click:</strong> Rename node, Add node
-              </li>
-              <li>
-                <strong>Double-click on node:</strong> Rename a node
-              </li>
-              <li>
-                <strong>Click on node:</strong> open node details
-              </li>
-              <li>
-                <strong>Click on edge:</strong> open edge details
-              </li>
-              <li>
-                <strong>Click on the background:</strong> close node/edge details
-              </li>
+              <li><strong>N:</strong> Add a new node</li>
+              <li><strong>Del/Backspace:</strong> Delete selected node</li>
+              <li><strong>Right-click:</strong> Rename node, Add node</li>
+              <li><strong>Double-click on node:</strong> Rename a node</li>
+              <li><strong>Click on node:</strong> open node details</li>
+              <li><strong>Click on edge:</strong> open edge details</li>
+              <li><strong>Click on the background:</strong> close node/edge details</li>
             </ul>
             <p>Total Nodes: {nodes.length}</p>
           </div>
@@ -825,10 +878,7 @@ const MapEditor = ({ mapId }) => {
         <ReactFlow
           nodes={nodes.map((node) => ({
             ...node,
-            data: {
-              ...node.data,
-              label: renderNode(node),
-            },
+            data: { ...node.data, label: renderNode(node) },
           }))}
           edges={edges}
           onNodesChange={handleNodeChanges}
@@ -844,10 +894,11 @@ const MapEditor = ({ mapId }) => {
           onSelectionChange={onSelectionChange}
           onNodeDoubleClick={onNodeDoubleClick}
           onEdgeDoubleClick={onEdgeDoubleClick}
+          onPaneMouseMove={handlePaneMouseMove}     // <-- NEW: broadcast cursors
           selectNodesOnDrag
           fitView
         >
-          {/* Phase A: Background chooser (per-user) */}
+          {/* Background chooser (per-user) */}
           {bgStyle !== "none" && (
             <Background
               id="editor-bg"
@@ -858,46 +909,52 @@ const MapEditor = ({ mapId }) => {
             />
           )}
 
-          {/* Force-visible MiniMap (anchored bottom-left) */}
-          <MiniMap
-            className="me-minimap"
-            style={{
-              position: "absolute",
-              left: 12,
-              bottom: 12,
-              width: 220,
-              height: 140,
-              background: "rgba(255,255,255,.92)",
-              border: "1px solid #e2e8f0",
-              borderRadius: 12,
-              boxShadow: "0 8px 20px rgba(2,6,23,.10)",
-              zIndex: 5,
-            }}
-            nodeColor={deriveNodeColor}
-            nodeBorderRadius={6}
-            pannable
-            zoomable
-          />
-
+          {/* MiniMap */}
+          {minimapEnabled && (
+            <MiniMap
+              className="me-minimap"
+              style={{
+                position: "absolute",
+                left: 12,
+                bottom: 12,
+                width: 220,
+                height: 140,
+                background: "rgba(255,255,255,.92)",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                boxShadow: "0 8px 20px rgba(2,6,23,.10)",
+                zIndex: 5,
+              }}
+              nodeColor={deriveNodeColor}
+              nodeBorderRadius={6}
+              pannable
+              zoomable
+            />
+          )}
         </ReactFlow>
 
-        {/* Live cursors */}
-        {Object.entries(cursors).map(([id, cursor]) => (
-          <div
-            key={id}
-            style={{
-              position: "absolute",
-              left: cursor.x,
-              top: cursor.y,
-              transform: "translate(-50%, -50%)",
-              pointerEvents: "none",
-              zIndex: 1000,
-            }}
-          >
-            <div className="cursor-dot" style={{ background: cursor.color }} />
-            <div className="cursor-label">{cursor.username}</div>
-          </div>
-        ))}
+        {/* Live cursors (drawn in screen space using viewport transform) */}
+        {Object.entries(cursors).map(([id, cursor]) => {
+          if (!showMyCursor && currentUser?.id === id) return null; // hide my own
+          const pos = flowToScreen({ x: cursor.x, y: cursor.y });
+          return (
+            <div
+              key={id}
+              style={{
+                position: "absolute",
+                left: pos.left,
+                top: pos.top,
+                transform: "translate(-50%, -50%)",
+                pointerEvents: "none",
+                zIndex: 1000,
+              }}
+            >
+              <div className="cursor-dot" style={{ background: cursor.color }} />
+              <div className="cursor-label">{cursor.username}</div>
+            </div>
+          );
+        })}
+
 
         {/* Context menu */}
         {contextMenu && (
@@ -928,7 +985,7 @@ const MapEditor = ({ mapId }) => {
       >
         <h3 style={{ color: "#2C5F2D" }}>Learning Space Details</h3>
 
-        {/* Phase A: Canvas Settings (per-user) */}
+        {/* Canvas Settings (per-user) */}
         <div className="me-canvas-settings" style={{ marginBottom: 12 }}>
           <div className="me-field">
             <span className="me-label">Background</span>
@@ -1008,6 +1065,37 @@ const MapEditor = ({ mapId }) => {
           </button>
         </div>
 
+
+        {/* Cursor settings */}
+        <div className="me-field" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+          <input
+            id="toggle-my-cursor"
+            type="checkbox"
+            checked={showMyCursor}
+            onChange={(e) => setShowMyCursor(e.target.checked)}
+          />
+          <label htmlFor="toggle-my-cursor" className="me-label" style={{ margin: 0 }}>
+            Show my cursor
+          </label>
+        </div>
+
+        <div className="me-field">
+          <label className="me-label">Cursor FPS: {cursorFps}</label>
+          <input
+            type="range"
+            min={5}
+            max={60}
+            step={1}
+            value={cursorFps}
+            onChange={(e) => setCursorFps(parseInt(e.target.value, 10))}
+            style={{ width: "100%" }}
+          />
+          <small style={{ color: "#64748b" }}>
+            Higher FPS = smoother, but more messages.
+          </small>
+        </div>
+
+
         {/* Map Name */}
         <div className="me-field">
           <label className="me-label">Learning Space Name:</label>
@@ -1043,6 +1131,22 @@ const MapEditor = ({ mapId }) => {
         <div className="me-field">
           <label className="me-label">Last Edited:</label>
           <div className="me-chip">{lastEdited}</div>
+        </div>
+
+        {/* MiniMap toggle */}
+        <div
+          className="me-field"
+          style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}
+        >
+          <input
+            id="toggle-minimap"
+            type="checkbox"
+            checked={minimapEnabled}
+            onChange={(e) => setMinimapEnabled(e.target.checked)}
+          />
+          <label htmlFor="toggle-minimap" className="me-label" style={{ margin: 0 }}>
+            Show MiniMap
+          </label>
         </div>
 
         {/* Node details panel */}
@@ -1301,8 +1405,8 @@ const MapEditor = ({ mapId }) => {
                   alt={`${p.username}'s profile`}
                   style={{ width: 50, height: 50, borderRadius: "50%", objectFit: "cover" }}
                 />
-                <span style={{ color: p.online ? "green" : "red", fontSize: 12 }}>
-                  {p.online ? "online" : "offline"}
+                <span style={{ color: presenceUsers[p.id] ? "green" : "red", fontSize: 12 }}>
+                  {presenceUsers[p.id] ? "online" : "offline"}
                 </span>
               </li>
             ))}
