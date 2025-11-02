@@ -106,6 +106,9 @@ const LOCAL_BG_COLOR_KEY = "mapEditor:bgColor";
 const LOCAL_CURSOR_SHOW_KEY = "mapEditor:showMyCursor";
 const LOCAL_CURSOR_FPS_KEY = "mapEditor:cursorFps";
 
+const LOCAL_CURSOR_SHOW_OTHERS_KEY = "mapEditor:showOthersCursors";
+
+
 const colorFromId = (userId) => {
   if (!userId) return "#0ea5e9";
   let h = 0;
@@ -184,6 +187,16 @@ const MapEditor = ({ mapId }) => {
     }
   });
 
+  // Show others cursors
+  const [showOthersCursors, setShowOthersCursors] = useState(() => {
+    try {
+      const v = localStorage.getItem(LOCAL_CURSOR_SHOW_OTHERS_KEY);
+      return v === null ? true : v === "true";
+    } catch {
+      return true;
+    }
+  });
+
   const [cursorFps, setCursorFps] = useState(() => {
     try {
       const v = parseInt(localStorage.getItem(LOCAL_CURSOR_FPS_KEY), 10);
@@ -192,6 +205,13 @@ const MapEditor = ({ mapId }) => {
       return 20;
     }
   });
+
+  // Keep a live ref of the toggle for the broadcast handler
+  const showOthersRef = useRef(showOthersCursors);
+  useEffect(() => {
+    showOthersRef.current = showOthersCursors;
+  }, [showOthersCursors]);
+
 
 
   //  USEEFFECTS: Choose FPS for cursor updates + show/hide own cursor
@@ -202,6 +222,22 @@ const MapEditor = ({ mapId }) => {
   useEffect(() => {
     try { localStorage.setItem(LOCAL_CURSOR_FPS_KEY, String(cursorFps)); } catch { }
   }, [cursorFps]);
+
+  //  Showing other users cursors
+  useEffect(() => {
+    try { localStorage.setItem(LOCAL_CURSOR_SHOW_OTHERS_KEY, String(showOthersCursors)); } catch { }
+  }, [showOthersCursors]);
+
+  // Hide other users cursors when toggled off, will also refresh any stuck cursors
+  useEffect(() => {
+    if (!showOthersCursors) {
+      setCursors((prev) => {
+        const me = currentUser?.id;
+        return me && prev[me] ? { [me]: prev[me] } : {};
+      });
+    }
+  }, [showOthersCursors, currentUser]);
+
 
 
 
@@ -716,11 +752,20 @@ const MapEditor = ({ mapId }) => {
     });
 
     // Receive cursor broadcasts
+    // Receive cursor broadcasts
     chan.on("broadcast", { event: "cursor" }, ({ payload }) => {
       const { userId, x, y, username, color } = payload || {};
-      if (!userId || userId === currentUser.id) return; // ignore self
+      if (!userId) return;
+
+      // Ignore my own broadcast; I already render mine locally
+      if (userId === currentUser.id) return;
+
+      // If the user turned off "Show others’ cursors", skip state updates entirely
+      if (!showOthersRef.current) return;
+
       setCursors((prev) => ({ ...prev, [userId]: { x, y, username, color } }));
     });
+
 
     // Subscribe & track our presence metadata
     const myColor = colorFromId(currentUser.id);
@@ -935,8 +980,12 @@ const MapEditor = ({ mapId }) => {
 
         {/* Live cursors (drawn in screen space using viewport transform) */}
         {Object.entries(cursors).map(([id, cursor]) => {
-          if (!showMyCursor && currentUser?.id === id) return null; // hide my own
-          const pos = flowToScreen({ x: cursor.x, y: cursor.y });
+          // hide mine if "show my cursor" is off
+          if (!showMyCursor && currentUser?.id === id) return null;
+          // hide others if toggle is off
+          if (!showOthersCursors && currentUser?.id !== id) return null;
+
+          const pos = flowToScreen({ x: cursor.x, y: cursor.y }); // or your existing screen coord helper
           return (
             <div
               key={id}
@@ -954,6 +1003,9 @@ const MapEditor = ({ mapId }) => {
             </div>
           );
         })}
+
+
+
 
 
         {/* Context menu */}
@@ -1093,6 +1145,19 @@ const MapEditor = ({ mapId }) => {
           <small style={{ color: "#64748b" }}>
             Higher FPS = smoother, but more messages.
           </small>
+        </div>
+
+        {/* Cursor visibility for other cursors */}
+        <div className="me-field" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+          <input
+            id="toggle-others-cursor"
+            type="checkbox"
+            checked={showOthersCursors}
+            onChange={(e) => setShowOthersCursors(e.target.checked)}
+          />
+          <label htmlFor="toggle-others-cursor" className="me-label" style={{ margin: 0 }}>
+            Show others’ cursors
+          </label>
         </div>
 
 
