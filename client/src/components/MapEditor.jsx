@@ -752,7 +752,6 @@ const MapEditor = ({ mapId }) => {
     });
 
     // Receive cursor broadcasts
-    // Receive cursor broadcasts
     chan.on("broadcast", { event: "cursor" }, ({ payload }) => {
       const { userId, x, y, username, color } = payload || {};
       if (!userId) return;
