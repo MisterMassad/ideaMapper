@@ -11,6 +11,41 @@ https://github.com/user-attachments/assets/68bbaec1-5062-457c-93e4-39e7b8d68137
 
 <img width="2010" height="1308" alt="Dashboard_page_1" src="https://github.com/user-attachments/assets/a1141fa2-4068-4ae9-aa30-8230a5a53c88" />
 
+# November Updates:
+1. Added a pricing plan and quota limits. Users can create a limited number of maps, unless they upgrade their plan.
+   1. Introudced 3 plans:
+        - Free (Limit of 5 maps)
+        - Pro (Limit of 20 maps)
+        - Unlimited (No limit)
+     
+2. Real-time using broadcast channels instead of database writes and pulls:
+   1. Live cursor updates are now using Supabase broadcast channels instead of a regular database write and pull.
+   2. Moving nodes is now updated in real-time for all connected users using Supabase broadcast channel.
+  
+3. Dashboard UI and UX updates:
+   1. Added a left menu bar, where users can now sign out from, access their account details, upload a new profile picture, enable/disable light mode, and upgrade/downgrade their subscription.
+   2. Updated the Map Cards. A totally new dashboard.
+        1. Map Cards now have an update UI, they also include a 3-dot hamburger menu:
+             - Edit map name.
+             - Edit map description.
+             - Duplicate map.
+             - Delete map.
+         2. Map cards now include the map author name, and also include the last updated timestamp of the map.
+     
+   3. Map Editor Updates:
+        - Added the ability for users to choose:
+             - Canvas color
+             - Canvas grid (lined, dotted, or none)
+             - Grid Color
+        - Added live cursor options to allow for more flexibility and less distractions:
+             - FPS Slider for how fast "your own" cursor is moving (1-60) FPS.
+             - Added an option to hide your own cursor.
+             - Added an option top hide other connected users cursors.
+        - Added a new mini-map for maps.
+        - Users can toggle minimaps on and off.
+        - Maps are navigatble using the minimaps.
+        - Updated the online/offline tag for users to work in real-time. Whenever a new user joins the map, he appears as "Online", when he leaves he will instantly appear to be "Offline".
+        - Updated the nodes UI. 
 # Updates:
 
 1. The project now fully works using Supabase and not Firebase. The whole task of this project was to do Firebase to Supabase migration.
