@@ -258,3 +258,124 @@ MapEditor.css — harmonized with Login.css + Dashboard.css
   pointer-events: auto;
 }
 
+
+
+/* November 8th */
+
+
+/* ===== Modern Node Card ===== */
+.node-card {
+  width: 220px;
+  min-height: 84px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, .08);
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .18s ease;
+  padding: 10px 12px;
+}
+
+.node-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, .12);
+  border-color: rgba(14,165,233,.25);
+}
+
+.node-card.is-selected {
+  outline: 2px solid rgba(14,165,233,.6);
+  box-shadow: 0 14px 32px rgba(14,165,233,.15);
+}
+
+.node-header {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.node-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: radial-gradient(40% 40% at 50% 50%, #22d3ee, #0ea5e9);
+  box-shadow: 0 0 0 3px rgba(14,165,233,.15);
+}
+
+.node-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: .2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-body { color: #334155; }
+.node-subtitle { font-size: .85rem; margin-top: 2px; color: #475569; }
+.node-meta { margin-top: 6px; font-size: .75rem; color: #64748b; }
+
+/* ===== Big, friendly ports ===== */
+.rf-port {
+  width: 14px !important;
+  height: 14px !important;
+  border: 2px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  border-radius: 50% !important;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+
+.rf-port:hover {
+  transform: scale(1.1);
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 4px rgba(14,165,233,.15);
+}
+
+/* ===== Edges ===== */
+.edge-path {
+  fill: none;
+  stroke: #334155;
+  stroke-width: 2;
+  opacity: .9;
+}
+
+.edge-selected {
+  stroke: #0ea5e9;
+  filter: drop-shadow(0 0 6px rgba(14,165,233,.35));
+}
+
+/* optional animation */
+.edge-path {
+  stroke-dasharray: 1000;
+  animation: edge-flow 8s linear infinite;
+}
+@keyframes edge-flow {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -1000; }
+}
+
+/* Connection preview line */
+.react-flow__connection-path {
+  stroke: #0ea5e9 !important;
+  stroke-width: 2 !important;
+}
+
+/* Prevent measurement feedback loops */
+.react-flow,
+.react-flow__renderer,
+.react-flow__viewport {
+  contain: layout size style;
+}
+
+/* Avoid shadows/animations re-triggering ResizeObserver */
+.modern-node {
+  will-change: transform;
+  transform: translateZ(0); /* promote to its own layer */
+}
+
+/* Optional: keep the main scroller from changing RF's size */
+.map-editor {
+  overflow: hidden; /* the side panel already scrolls */
+}

@@ -16,7 +16,7 @@ import "reactflow/dist/style.css";
 import { supabase } from "../supabaseClient";
 import "../styles/MapEditor.css";
 
-// --- String helpers: single source of truth for node name ---
+// --- String helpers: single source for node name ---
 const getNodeTitle = (node) =>
   (node && node.data && typeof node.data.title === "string" ? node.data.title : "") || "";
 
@@ -206,7 +206,7 @@ const MapEditor = ({ mapId }) => {
     }
   });
 
-  // Keep a live ref of the toggle for the broadcast handler
+  // Keep a live ref of the toggle for the broadcast handler (avoids stale closures)
   const showOthersRef = useRef(showOthersCursors);
   useEffect(() => {
     showOthersRef.current = showOthersCursors;
@@ -756,15 +756,14 @@ const MapEditor = ({ mapId }) => {
       const { userId, x, y, username, color } = payload || {};
       if (!userId) return;
 
-      // Ignore my own broadcast; I already render mine locally
+      // Ignore my own broadcast    
       if (userId === currentUser.id) return;
 
-      // If the user turned off "Show others’ cursors", skip state updates entirely
+      // If the user turned off "Show others’ cursors", skip   
       if (!showOthersRef.current) return;
 
       setCursors((prev) => ({ ...prev, [userId]: { x, y, username, color } }));
     });
-
 
     // Subscribe & track our presence metadata
     const myColor = colorFromId(currentUser.id);
