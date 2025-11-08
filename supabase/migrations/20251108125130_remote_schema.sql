@@ -227,11 +227,31 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "username" "text",
     "profile_picture" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "onboarding_seen" boolean DEFAULT false NOT NULL,
+    "map_limit" integer DEFAULT 5 NOT NULL,
+    "copy_limit" integer DEFAULT 3 NOT NULL,
+    "plan" "text" DEFAULT 'free'::"text" NOT NULL
 );
 
 
 ALTER TABLE "public"."profiles" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."profiles"."onboarding_seen" IS 'Gives the users the option to set his profile picture on the first login, or skip. After the pop-up is shown, the boolean will be set to True.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."map_limit" IS 'Number of maps created';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."copy_limit" IS 'Number of duplicates created';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."plan" IS 'The pricing plan';
+
 
 
 ALTER TABLE ONLY "public"."map_cursors"
