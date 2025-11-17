@@ -331,6 +331,42 @@ const MapEditor = ({ mapId }) => {
     [nodes, updateMapRow, setEdges]
   );
 
+
+  // Live node-drag broadcasting
+
+  const dragSaveTimeoutRef = useRef(null);
+
+  const handleNodeDrag = useCallback((evt, node) => {
+    const chan = realtimeChannelRef.current;
+    if (!chan || !currentUser) return;
+
+    // Broadcast this node's live position (visual only)
+    chan.send({
+      type: "broadcast",
+      event: "node-move",
+      payload: {
+        userId: currentUser.id,
+        nodeId: node.id,
+        x: node.position.x,
+        y: node.position.y,
+        ts: Date.now(),
+      },
+    });
+  }, [currentUser]);
+
+  const handleNodeDragStop = useCallback(() => {
+    // Debounced persist: write final positions once user stops dragging
+    clearTimeout(dragSaveTimeoutRef.current);
+    dragSaveTimeoutRef.current = setTimeout(() => {
+      setNodes((curr) => {
+        updateMapRow(curr, edges);
+        return curr;
+      });
+    }, 250);
+  }, [edges, setNodes, updateMapRow]);
+
+  // Until here -- added live node-drag broadcasting
+
   const onConnect = useCallback(
     (params) => {
       const modal = document.createElement("div");
@@ -656,7 +692,7 @@ const MapEditor = ({ mapId }) => {
 
       await refreshParticipants();
 
-      // Subscribe to map row updates (durable data only)
+      // Subscribe to map row updates for live real time changes.
       const channel = supabase
         .channel("map-" + mapId)
         .on(
@@ -764,6 +800,20 @@ const MapEditor = ({ mapId }) => {
 
       setCursors((prev) => ({ ...prev, [userId]: { x, y, username, color } }));
     });
+
+    // Receive live node-move broadcasts
+    chan.on("broadcast", { event: "node-move" }, ({ payload }) => {
+      const { userId, nodeId, x, y } = payload || {};
+      if (!nodeId) return;
+
+      // Ignore my own broadcasts to avoid jitter
+      if (currentUser && userId === currentUser.id) return;
+
+      setNodes((curr) =>
+        curr.map((n) => (n.id === nodeId ? { ...n, position: { x, y } } : n))
+      );
+    });
+
 
     // Subscribe & track our presence metadata
     const myColor = colorFromId(currentUser.id);
@@ -896,24 +946,25 @@ const MapEditor = ({ mapId }) => {
             className="description me-stats"
             style={{
               padding: "2px",
-              background: "linear-gradient(to bottom, #4caf50, #81c784)",
+              background: "linear-gradient(to bottom, #0ea5e9, #0ea5e9)",
               color: "#ffffff",
               boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
               borderRadius: "4px",
               height: "60%",
             }}
           >
-            <p>Keyboard Shortcuts:</p>
+            <p style={{ textAlign: "center" }}>Keyboard Shortcuts:</p>
             <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: "10px" }}>
-              <li><strong>N:</strong> Add a new node</li>
-              <li><strong>Del/Backspace:</strong> Delete selected node</li>
-              <li><strong>Right-click:</strong> Rename node, Add node</li>
-              <li><strong>Double-click on node:</strong> Rename a node</li>
-              <li><strong>Click on node:</strong> open node details</li>
-              <li><strong>Click on edge:</strong> open edge details</li>
-              <li><strong>Click on the background:</strong> close node/edge details</li>
+              <li style={{ color: "#FFFFFF" }}><strong>N:</strong> Add a new node</li>
+              <li style={{ color: "#FFFFFF" }}><strong>Del/Backspace:</strong> Delete selected node</li>
+              <li style={{ color: "#FFFFFF" }}><strong>Right-click:</strong> Rename node, Add node</li>
+              <li style={{ color: "#FFFFFF" }}><strong>Double-click on node:</strong> Rename a node</li>
+              <li style={{ color: "#FFFFFF" }}><strong>Click on node:</strong> open node details</li>
+              <li style={{ color: "#FFFFFF" }}><strong>Click on edge:</strong> open edge details</li>
+              <li style={{ color: "#FFFFFF" }}><strong>Click on the background:</strong> close node/edge details</li>
             </ul>
-            <p>Total Nodes: {nodes.length}</p>
+            <br></br>
+            <p style={{ color: "#FFFFFF", textAlign: "center" }}>Total Nodes: {nodes.length}</p>
           </div>
         </Panel>
 
@@ -933,11 +984,14 @@ const MapEditor = ({ mapId }) => {
             setShowEdgeDetails(false);
           }}
           onNodeClick={onNodeClick}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragStop={handleNodeDragStop}
+
           onEdgeClick={onEdgeClick}
           onSelectionChange={onSelectionChange}
           onNodeDoubleClick={onNodeDoubleClick}
           onEdgeDoubleClick={onEdgeDoubleClick}
-          onPaneMouseMove={handlePaneMouseMove}     // <-- NEW: broadcast cursors
+          onPaneMouseMove={handlePaneMouseMove}
           selectNodesOnDrag
           fitView
         >

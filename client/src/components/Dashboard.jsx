@@ -12,8 +12,8 @@ import PlanModal from "./PlanModal";
 import Sidebar from "./Sidebar";
 import MapCard from "./MapCard";
 
-  // Helper to calculate the payload
-  const bytes = (obj) => new TextEncoder().encode(JSON.stringify(obj ?? {})).length;
+// Helper to calculate the payload
+const bytes = (obj) => new TextEncoder().encode(JSON.stringify(obj ?? {})).length;
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -76,33 +76,37 @@ const Dashboard = () => {
     used: 0,
   });
 
+  // Quota helper: Gets all of the maps that the user has
+  const usedCount = (arr) => (Array.isArray(arr) ? arr.length : 0);
+
+
   // Upgrade plan
   const upgradePlanTo = async (nextPlan) => {
-  try {
-    const limits = { free: 5, pro: 20, unlimited: 9999 };
-    const nextLimit = limits[nextPlan] ?? 5;
+    try {
+      const limits = { free: 5, pro: 20, unlimited: 9999 };
+      const nextLimit = limits[nextPlan] ?? 5;
 
-    const { data: authRes } = await supabase.auth.getUser();
-    const user = authRes?.user;
-    if (!user) throw new Error("You must be logged in.");
+      const { data: authRes } = await supabase.auth.getUser();
+      const user = authRes?.user;
+      if (!user) throw new Error("You must be logged in.");
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ plan: nextPlan, map_limit: nextLimit })
-      .eq("id", user.id);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ plan: nextPlan, map_limit: nextLimit })
+        .eq("id", user.id);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // local state
-    setPlan(nextPlan);
-    setMapLimit(nextLimit);
-    setShowPlans(false);
-    alert(`✅ Upgraded to ${nextPlan.toUpperCase()} plan.`);
-  } catch (err) {
-    console.error(err);
-    setError(err.message || "Failed to upgrade plan.");
-  }
-};
+      // local state
+      setPlan(nextPlan);
+      setMapLimit(nextLimit);
+      setShowPlans(false);
+      alert(`✅ Upgraded to ${nextPlan.toUpperCase()} plan.`);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to upgrade plan.");
+    }
+  };
 
 
 
@@ -174,83 +178,83 @@ const Dashboard = () => {
 
 
 
-const fetchOwners = useCallback(async (list) => {
-  try {
-    const ownerIds = Array.from(
-      new Set((list || []).map(m => m.owner_id).filter(Boolean))
-    );
-    if (ownerIds.length === 0) return;
+  const fetchOwners = useCallback(async (list) => {
+    try {
+      const ownerIds = Array.from(
+        new Set((list || []).map(m => m.owner_id).filter(Boolean))
+      );
+      if (ownerIds.length === 0) return;
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, username")
-      .in("id", ownerIds);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", ownerIds);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const map = {};
-    (data || []).forEach(r => { map[r.id] = r.username || "User"; });
-    setOwners(map);
-  } catch (e) {
-    console.error("fetchOwners error:", e);
-  }
-}, []);
+      const map = {};
+      (data || []).forEach(r => { map[r.id] = r.username || "User"; });
+      setOwners(map);
+    } catch (e) {
+      console.error("fetchOwners error:", e);
+    }
+  }, []);
 
-const refreshMaps = useCallback(async (uid) => {
-  console.time("maps.refresh");
-  const t0 = performance.now();
+  const refreshMaps = useCallback(async (uid) => {
+    console.time("maps.refresh");
+    const t0 = performance.now();
 
-  // Pull only lightweight fields from the joined maps row
-  const baseSelect =
-    "map:maps(id,name,description,last_edited,owner_id)";
+    // Pull only lightweight fields from the joined maps row
+    const baseSelect =
+      "map:maps(id,name,description,last_edited,owner_id)";
 
-  // First try: order by last_edited (your schema)
-  let resp = await supabase
-    .from("map_participants")
-    .select(baseSelect)
-    .eq("user_id", uid)
-    // If your supabase-js version supports it, keep the foreignTable option.
-    // If not, we'll fallback below.
-    .order("last_edited", { ascending: false, foreignTable: "maps" })
-    .limit(120, { foreignTable: "maps" });
-
-  // If that errored (e.g., older client doesn’t support foreignTable),
-  // try again without order to keep things working.
-  if (resp.error) {
-    console.warn("refreshMaps fallback (no order):", resp.error.message);
-    resp = await supabase
+    // First try: order by last_edited (your schema)
+    let resp = await supabase
       .from("map_participants")
       .select(baseSelect)
-      .eq("user_id", uid);
-  }
+      .eq("user_id", uid)
+      // If your supabase-js version supports it, keep the foreignTable option.
+      // If not, we'll fallback below.
+      .order("last_edited", { ascending: false, foreignTable: "maps" })
+      .limit(120, { foreignTable: "maps" });
 
-  console.timeEnd("maps.refresh");
+    // If that errored 
+    // try again without order to keep things working.
+    if (resp.error) {
+      console.warn("refreshMaps fallback (no order):", resp.error.message);
+      resp = await supabase
+        .from("map_participants")
+        .select(baseSelect)
+        .eq("user_id", uid);
+    }
 
-  if (resp.error) {
-    console.error("maps.refresh error:", resp.error);
-    setAllMaps([]);
-    setMaps([]);
-    return;
-  }
+    console.timeEnd("maps.refresh");
 
-  const list = (resp.data || []).map((r) => r.map).filter(Boolean);
+    if (resp.error) {
+      console.error("maps.refresh error:", resp.error);
+      setAllMaps([]);
+      setMaps([]);
+      return;
+    }
 
-  const size = bytes(list);
-  const t1 = performance.now();
-  console.log(
-    `maps.refresh rows=${list.length}, bytes≈${size}, ms=${(t1 - t0).toFixed(1)}`
-  );
+    const list = (resp.data || []).map((r) => r.map).filter(Boolean);
 
-  setAllMaps(list);
-  await fetchOwners(list);
+    const size = bytes(list);
+    const t1 = performance.now();
+    console.log(
+      `maps.refresh rows=${list.length}, bytes≈${size}, ms=${(t1 - t0).toFixed(1)}`
+    );
 
-  if (searchTerm.trim() === "") {
-    setMaps(list);
-  } else {
-    const term = searchTerm.toLowerCase();
-    setMaps(list.filter((m) => (m.name || "").toLowerCase().includes(term)));
-  }
-}, [searchTerm, fetchOwners]);
+    setAllMaps(list);
+    await fetchOwners(list);
+
+    if (searchTerm.trim() === "") {
+      setMaps(list);
+    } else {
+      const term = searchTerm.toLowerCase();
+      setMaps(list.filter((m) => (m.name || "").toLowerCase().includes(term)));
+    }
+  }, [searchTerm, fetchOwners]);
 
 
 
@@ -336,7 +340,7 @@ const refreshMaps = useCallback(async (uid) => {
     try {
       if (!currentUser) return;
       // optimistic UI, then persist
-      // ensure unique if you want real-time checks:
+      // ensure unique for real time checks
       const taken = await isUsernameTaken(newUsername.trim(), currentUser.id);
       if (taken) {
         setError("Username is already taken. Please choose another one.");
@@ -382,7 +386,6 @@ const refreshMaps = useCallback(async (uid) => {
   };
 
   // ------------- maps handlers -------------
-  // Replace your existing createNewMap with this:
   const createNewMap = async (e) => {
     e.preventDefault();
     setError("");
@@ -398,12 +401,20 @@ const refreshMaps = useCallback(async (uid) => {
         return;
       }
 
-      const owned = countOwned(allMaps, user.id);
+      // const owned = countOwned(allMaps, user.id);
+      // const unlimited = plan === "unlimited";
+      // if (!unlimited && owned >= mapLimit) {
+      //   openLimitModal("map", mapLimit, owned);
+      //   return;
+      // }
+
+      const used = usedCount(allMaps);           // I used the helper I created earlier here to get ALL maps
       const unlimited = plan === "unlimited";
-      if (!unlimited && owned >= mapLimit) {
-        openLimitModal("map", mapLimit, owned);
+      if (!unlimited && used >= mapLimit) {
+        openLimitModal("map", mapLimit, used);
         return;
       }
+
 
       // Use server-side RPC to avoid RLS issues
       const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
@@ -445,221 +456,167 @@ const refreshMaps = useCallback(async (uid) => {
     }
   };
 
-  // Rename from the card menu
-const handleRename = async (map) => {
-  const current = (map?.name || "").trim();
-  const next = window.prompt("New name:", current);
-  if (next == null) return; // cancelled
-  const newName = next.trim();
-  if (!newName || newName === current) return;
-
-  // optimistic UI
-  setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, name: newName } : m));
-
-  const { data, error } = await supabase
-    .from("maps")
-    .update({ name: newName, last_edited: new Date().toISOString() }) // ← use last_edited
-    .eq("id", map.id)
-    .select("id, name, description, last_edited")                      // ← select last_edited
-    .single();
-
-  if (error) {
-    console.error("Rename failed:", error);
-    // rollback
-    setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, name: current } : m));
-    alert("Couldn’t rename map. Please try again.");
-  } else if (data) {
-    setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, ...data } : m));
-  }
-};
-
-// Edit description from the card menu
-const handleEditDescription = async (map) => {
-  const current = (map?.description || "").trim();
-  const next = window.prompt("New description:", current);
-  if (next == null) return; // cancelled
-  const newDesc = next.trim();
-  if (newDesc === current) return;
-
-  // optimistic UI
-  setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, description: newDesc } : m));
-
-  const { data, error } = await supabase
-    .from("maps")
-    .update({ description: newDesc, last_edited: new Date().toISOString() }) // ← use last_edited
-    .eq("id", map.id)
-    .select("id, name, description, last_edited")                              // ← select last_edited
-    .single();
-
-  if (error) {
-    console.error("Update description failed:", error);
-    // rollback
-    setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, description: current } : m));
-    alert("Couldn’t update description. Please try again.");
-  } else if (data) {
-    setMaps((prev) => prev.map(m => m.id === map.id ? { ...m, ...data } : m));
-  }
-};
-
-// const handleDuplicate = async (map) => {
-//   try {
-//     if (!map?.id) return;
-
-//     // --- 0) Ensure auth ---
-//     const { data: authRes } = await supabase.auth.getUser();
-//     const user = authRes?.user;
-//     if (!user) throw new Error("You must be logged in.");
-
-//     // --- 1) Quota check -
-//     const owned = countOwned(allMaps, user.id); 
-//     const unlimited = plan === "unlimited";
-//     if (!unlimited && owned >= mapLimit) {
-//       if (typeof openLimitModal === "function") {
-//         openLimitModal("map", mapLimit, owned);
-//       } else {
-//         setError?.(`Map limit reached (${mapLimit}).`);
-//       }
-//       return;
-//     }
-
-//     // --- 2) Pull the source fields
-//     const { data: src, error: selErr } = await supabase
-//       .from("maps")
-//       .select("name, description, nodes, edges, node_notes, node_data")
-//       .eq("id", map.id)
-//       .single();
-
-//     if (selErr) {
-//       console.error("Duplicate: select source failed", selErr);
-//       alert("Couldn’t read the map to duplicate.");
-//       return;
-//     }
-
-//     // --- 3) Decide the new name
-//     const baseName = (src?.name || "Untitled").trim();
-//     let newName = `${baseName} (copy)`;
-//     const existingNames = new Set((allMaps || []).map(m => (m.name || "").trim().toLowerCase()));
-//     let i = 2;
-//     while (existingNames.has(newName.trim().toLowerCase())) {
-//       newName = `${baseName} (copy ${i++})`;
-//     }
-
-//     // --- 4) Create the new map
-//     const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
-//       p_name: newName,
-//       p_description: src?.description || "",
-//     });
-//     if (rpcErr) {
-//       console.error("Duplicate: create_map RPC failed", rpcErr);
-//       alert("Couldn’t create the duplicate.");
-//       return;
-//     }
-
-//     // --- 5) Copy graph payload into the new map ---
-//     const payload = {
-//       nodes: src?.nodes ?? [],
-//       edges: src?.edges ?? [],
-//       node_notes: src?.node_notes ?? {},
-//       node_data: src?.node_data ?? {},
-//       last_edited: new Date().toISOString(),
-//     };
-
-//     const { data: updated, error: upErr } = await supabase
-//       .from("maps")
-//       .update(payload)
-//       .eq("id", newId)
-//       .select("id, name, description, updated_at, last_edited, owner_id")
-//       .single();
-
-//     if (upErr) {
-//       console.error("Duplicate: update new map failed", upErr);
-//       alert("Duplicate created without graph data. You can delete it and retry.");
-//       return;
-//     }
-
-//     // --- 6) Update UI (prepend) ---
-//     setAllMaps(prev => [{ ...(updated || { id: newId, name: newName, description: src?.description || "" }) }, ...prev]);
-//     setMaps(prev => [{ ...(updated || { id: newId, name: newName, description: src?.description || "" }) }, ...prev]);
-
-//   } catch (err) {
-//     console.error("Duplicate error:", err);
-//     setError(err.message || "Failed to duplicate.");
-//   }
-// };
-
-const handleDuplicate = async (map) => {
-  try {
+  // Save rename coming from MapCard popup
+  const handleRename = async (map) => {
     if (!map?.id) return;
 
-    // 1) Pull the source fields 
-    const { data: src, error: selErr } = await supabase
+    const newName = (map.name || "").trim();
+    if (!newName) {
+      setError("Name cannot be empty.");
+      return;
+    }
+
+    const targetId = map.id;
+
+    // Optimistic UI: update both maps + allMaps
+    setMaps((prev) =>
+      prev.map((m) => (m.id === targetId ? { ...m, name: newName } : m))
+    );
+    setAllMaps((prev) =>
+      prev.map((m) => (m.id === targetId ? { ...m, name: newName } : m))
+    );
+
+    const { data, error } = await supabase
       .from("maps")
-      .select("name, description, nodes, edges, node_notes, node_data")
-      .eq("id", map.id)
+      .update({ name: newName, last_edited: new Date().toISOString() })
+      .eq("id", targetId)
+      .select("id, name, description, last_edited, owner_id")
       .single();
 
-    if (selErr) {
-      console.error("Duplicate: select source failed", selErr);
-      alert("Couldn’t read the map to duplicate.");
-      return;
+    if (error) {
+      console.error("Rename failed:", error);
+      setError("Couldn’t rename map. Please try again.");
+
+      // Optional re-sync after error
+      try {
+        const { data: authRes } = await supabase.auth.getUser();
+        const user = authRes?.user;
+        if (user?.id) await refreshMaps(user.id);
+      } catch (e2) {
+        console.error("refresh after rename error:", e2);
+      }
+    } else if (data) {
+      setMaps((prev) => prev.map((m) => (m.id === data.id ? { ...m, ...data } : m)));
+      setAllMaps((prev) =>
+        prev.map((m) => (m.id === data.id ? { ...m, ...data } : m))
+      );
     }
+  };
 
-    // 2) Create a new map 
-    const copyName = (src?.name ? `${src.name} (copy)` : "Untitled (copy)");
-    const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
-      p_name: copyName,
-      p_description: src?.description || "",
-    });
-    if (rpcErr || !newId) {
-      console.error("Duplicate: create_map RPC failed", rpcErr);
-      alert("Couldn’t create the duplicated map.");
-      return;
-    }
+  // Save description coming from MapCard popup
+  const handleEditDescription = async (map) => {
+    if (!map?.id) return;
 
-    // 3) Update the new map 
-    const payload = {
-      nodes: Array.isArray(src?.nodes) ? src.nodes : [],
-      edges: Array.isArray(src?.edges) ? src.edges : [],
-      node_notes: src?.node_notes ?? {},
-      node_data: src?.node_data ?? {},
-      last_edited: new Date().toISOString(),
-    };
+    const newDesc = (map.description || "").trim();
+    const targetId = map.id;
 
-    const { error: upErr } = await supabase
+    // Optimistic UI
+    setMaps((prev) =>
+      prev.map((m) => (m.id === targetId ? { ...m, description: newDesc } : m))
+    );
+    setAllMaps((prev) =>
+      prev.map((m) => (m.id === targetId ? { ...m, description: newDesc } : m))
+    );
+
+    const { data, error } = await supabase
       .from("maps")
-      .update(payload)
-      .eq("id", newId);
+      .update({ description: newDesc, last_edited: new Date().toISOString() })
+      .eq("id", targetId)
+      .select("id, name, description, last_edited, owner_id")
+      .single();
 
-    if (upErr) {
-      console.error("Duplicate: update new map failed", upErr);
-      alert("Map created but content copy failed.");
-      // srefresh; user at least has an empty copy
+    if (error) {
+      console.error("Update description failed:", error);
+      setError("Couldn’t update description. Please try again.");
+      try {
+        const { data: authRes } = await supabase.auth.getUser();
+        const user = authRes?.user;
+        if (user?.id) await refreshMaps(user.id);
+      } catch (e2) {
+        console.error("refresh after desc error:", e2);
+      }
+    } else if (data) {
+      setMaps((prev) => prev.map((m) => (m.id === data.id ? { ...m, ...data } : m)));
+      setAllMaps((prev) =>
+        prev.map((m) => (m.id === data.id ? { ...m, ...data } : m))
+      );
     }
+  };
 
-    // 4) Refresh list 
-    const { data: authRes } = await supabase.auth.getUser();
-    const me = authRes?.user;
-    if (me?.id) await refreshMaps(me.id);
 
-  } catch (e) {
-    console.error("Duplicate unexpected error:", e);
-    alert("Something went wrong while duplicating.");
-  }
-};
 
-/// Pricing Function Helpers 
-  function countOwned(allMaps, userId) {
-    return (allMaps || []).filter(m => m.owner_id === userId).length;
-  }
-  function countCopies(allMaps, userId) {
-    return (allMaps || []).filter(
-      m => m.owner_id === userId && (m.created_via === "copy" || m.source_map_id)
-    ).length;
-  }
+  const handleDuplicate = async (map) => {
+    try {
+      if (!map?.id) return;
+
+      // quota check: duplicating creates a new map you own & participate in
+      const used = usedCount(allMaps);
+      const unlimited = plan === "unlimited";
+      if (!unlimited && used >= mapLimit) {
+        openLimitModal("map", mapLimit, used);
+        return;
+      }
+
+
+      // 1) Pull the source fields 
+      const { data: src, error: selErr } = await supabase
+        .from("maps")
+        .select("name, description, nodes, edges, node_notes, node_data")
+        .eq("id", map.id)
+        .single();
+
+      if (selErr) {
+        console.error("Duplicate: select source failed", selErr);
+        alert("Couldn’t read the map to duplicate.");
+        return;
+      }
+
+      // 2) Create a new map 
+      const copyName = (src?.name ? `${src.name} (copy)` : "Untitled (copy)");
+      const { data: newId, error: rpcErr } = await supabase.rpc("create_map", {
+        p_name: copyName,
+        p_description: src?.description || "",
+      });
+      if (rpcErr || !newId) {
+        console.error("Duplicate: create_map RPC failed", rpcErr);
+        alert("Couldn’t create the duplicated map.");
+        return;
+      }
+
+      // 3) Update the new map 
+      const payload = {
+        nodes: Array.isArray(src?.nodes) ? src.nodes : [],
+        edges: Array.isArray(src?.edges) ? src.edges : [],
+        node_notes: src?.node_notes ?? {},
+        node_data: src?.node_data ?? {},
+        last_edited: new Date().toISOString(),
+      };
+
+      const { error: upErr } = await supabase
+        .from("maps")
+        .update(payload)
+        .eq("id", newId);
+
+      if (upErr) {
+        console.error("Duplicate: update new map failed", upErr);
+        alert("Map created but content copy failed.");
+        // srefresh; user at least has an empty copy
+      }
+
+      // 4) Refresh list 
+      const { data: authRes } = await supabase.auth.getUser();
+      const me = authRes?.user;
+      if (me?.id) await refreshMaps(me.id);
+
+    } catch (e) {
+      console.error("Duplicate unexpected error:", e);
+      alert("Something went wrong while duplicating.");
+    }
+  };
 
   function openLimitModal(kind, limit, used) {
-  setLimitModal({ open: true, kind, limit, used });
-}
+    setLimitModal({ open: true, kind, limit, used });
+  }
 
 
 
@@ -701,8 +658,7 @@ const handleDuplicate = async (map) => {
   //   );
   // }
 
-  // If you already have confirmDeleteMap wired to Supabase, keep using it.
-  // If you want a direct delete without the confirm modal, you can use this:
+
   async function hardDeleteMap(id) {
     if (!id) return;
     setSaving(true);
@@ -734,6 +690,14 @@ const handleDuplicate = async (map) => {
         me = data?.user;
       }
       if (!me) throw new Error("You must be logged in.");
+
+      // Check plan before joining a new map
+      const used = usedCount(allMaps);
+      const unlimited = plan === "unlimited";
+      if (!unlimited && used >= mapLimit) {
+        openLimitModal("map", mapLimit, used);
+        return;
+      }
 
       const id = (joinMapId || "").trim();
       const name = (joinMapName || "").trim();
@@ -813,7 +777,7 @@ const handleDuplicate = async (map) => {
           onNav={(key) => { if (key === "settings") setShowProfileDetails(true); }}
           onSettings={() => setShowProfileDetails(true)}
           onSignOut={handleLogout}
-          onUpgrade={() => setShowPlans(true)} 
+          onUpgrade={() => setShowPlans(true)}
         />
         <div className="content-area">
           <header className="dashboard-header">
@@ -974,11 +938,11 @@ const handleDuplicate = async (map) => {
               <MapCard
                 key={m.id}
                 map={m}
-                ownerName={owners[m.owner_id]}   
+                ownerName={owners[m.owner_id]}
                 onOpen={(id) => setSelectedMapId(id)}
                 onRename={handleRename}
                 onEditDescription={handleEditDescription}
-                onDuplicate={(map) => handleDuplicate(map)} 
+                onDuplicate={(map) => handleDuplicate(map)}
                 onDelete={(map) => handleDeleteClick(map.id, map.name)}
               />
             ))}
