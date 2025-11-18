@@ -31,31 +31,31 @@ ideaMapper is a real-time collaborative mind-mapping web application where multi
 
 Users can:
 
-Create and organize ideas visually
+1. Create and organize ideas visually
 
-Move, rename, and customize nodes
+2. Move, rename, and customize nodes
 
-Collaborate with others in real-time with no lag
+3. Collaborate with others in real-time with no lag
 
-Track who is online inside each map (realtime using Supabase broadcast)
+4. Track who is online inside each map (realtime using Supabase broadcast)
 
-Control permissions and map ownership
+5. Control permissions and map ownership
 
-Customize canvas appearance (Colors, to grid type and grid color)
+6. Customize canvas appearance (Colors, to grid type and grid color)
 
-Manage their account and subscription plan
+7. Manage their account and subscription plan
 
-Navigate maps using a built-in minimap
+8. Navigate maps using a built-in minimap
 
-The application is powered by:
+9. The application is powered by:
 
-Supabase Authentication (email/password, magic links)
+10. Supabase Authentication (email/password, magic links)
 
-Supabase Realtime Broadcast (WebSocket-based collaboration)
+11. Supabase Realtime Broadcast (WebSocket-based collaboration)
 
-Supabase Postgres + RLS (secure, permission-controlled storage)
+12. Supabase Postgres + RLS (secure, permission-controlled storage)
 
-ReactFlow for graph visualization
+13. ReactFlow for graph visualization
 
 This version represents a full migration from Firebase to Supabase, along with a full UI/UX redesign and implementation of all previously incomplete features.
 
