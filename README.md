@@ -103,7 +103,7 @@ This version represents a full migration from Firebase to Supabase, along with a
 
 # Features
 
-## 🔐 Authentication & Account Management
+## Authentication & Account Management
 
 - Email/Password Authentication (Supabase)
 - Required Email Confirmation
@@ -120,7 +120,7 @@ Users can log in using a secure one-time link sent to their email.
    - Upload profile picture (Supabase Storage)
 
 
-## 🧭 Dashboard & Maps Management
+## Dashboard & Maps Management
 - Fully redesigned dashboard UI/UX
    - Modern layout, smoother navigation, and improved usability.
 
