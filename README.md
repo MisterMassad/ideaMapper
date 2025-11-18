@@ -276,3 +276,18 @@ You can clone the project and use it, updates are sent to my Supabase cloud. If 
 - Original project's repo: https://github.com/xCraftLab/HiveMindMap
 
 ## You're done! Happy coding!
+
+# Update Suggestions:
+- Add new types of maps that offer different types than the current node system.
+
+- Implement payment backend for plan upgrading.
+
+- Update the UX of node and edge customization.
+
+- Add the ability to add a description, an image, a video to the nodes.
+
+- Add the ability for an owner to kick an editor.
+
+- Add the ability to add a viewer to the map with no editing privileges.
+
+
