@@ -1,142 +1,278 @@
-# MindMapProject
+# Background & Motivation
 
-## Setup and Installation Tutorial - 2.5 minutes tutorial to setup the project successfully 
+The original version of the project was built using Firebase and implemented a basic collaborative mind-mapping environment. Although it was functional, it had many limitations.:
 
-https://github.com/user-attachments/assets/68bbaec1-5062-457c-93e4-39e7b8d68137
+Real-time interactions caused extreme database load (thousands of writes per second for cursor movement).
 
+Some features listed in the previous README weren't implemented or non-functional.
 
-<img width="2531" height="1304" alt="Main_page_1" src="https://github.com/user-attachments/assets/1d1d3644-6449-4be9-b44d-67a8ef69d474" />
+The UI/UX was outdated and difficult to use. A simple green UI.
 
-<img width="1488" height="1014" alt="Sign_up_page_1" src="https://github.com/user-attachments/assets/99d2e672-c878-44c2-aed3-4e88f5bb562c" />
+Authentication lacked critical workflows (email confirmation before granting a session, password reset).
 
-<img width="2010" height="1308" alt="Dashboard_page_1" src="https://github.com/user-attachments/assets/a1141fa2-4068-4ae9-aa30-8230a5a53c88" />
+Editors had too much power (They could delete the owner's map).
 
-# November Updates:
-1. Added a pricing plan and quota limits. Users can create a limited number of maps, unless they upgrade their plan.
-   1. Introudced 3 plans:
-        - Free (Limit of 5 maps)
-        - Pro (Limit of 20 maps)
-        - Unlimited (No limit)
-     
-2. Real-time using broadcast channels instead of database writes and pulls:
-   1. Live cursor updates are now using Supabase broadcast channels instead of a regular database write and pull.
-   2. Moving nodes is now updated in real-time for all connected users using Supabase broadcast channel.
-  
-3. Dashboard UI and UX updates:
-   1. Added a left menu bar, where users can now sign out from, access their account details, upload a new profile picture, enable/disable light mode, and upgrade/downgrade their subscription.
-   2. Updated the Map Cards. A totally new dashboard.
-        1. Map Cards now have an update UI, they also include a 3-dot hamburger menu:
-             - Edit map name.
-             - Edit map description.
-             - Duplicate map.
-             - Delete map.
-         2. Map cards now include the map author name, and also include the last updated timestamp of the map.
-     
-   3. Map Editor Updates:
-        - Added the ability for users to choose:
-             - Canvas color
-             - Canvas grid (lined, dotted, or none)
-             - Grid Color
-        - Added live cursor options to allow for more flexibility and less distractions:
-             - FPS Slider for how fast "your own" cursor is moving (1-60) FPS.
-             - Added an option to hide your own cursor.
-             - Added an option top hide other connected users cursors.
-        - Added a new mini-map for maps.
-        - Users can toggle minimaps on and off.
-        - Maps are navigatble using the minimaps.
-        - Updated the online/offline tag for users to work in real-time. Whenever a new user joins the map, he appears as "Online", when he leaves he will instantly appear to be "Offline".
-        - Updated the nodes UI. 
-# Updates:
+The dashboard and map editor were not scalable or user-friendly.
 
-1. The project now fully works using Supabase and not Firebase. The whole task of this project was to do Firebase to Supabase migration.
+Code was messy and condensed into 3-4 .jsx files. While .css files were present and written, they weren't connected to the .jsx correctly. All of the designs were done in-line, in files that were 1000+ lines.
 
-# Problems Fixed and Updates:
+There was no reusable modals or code.
 
-- Redesigned login/signup page. Made the GUI user friendly and added animations to the login page.
-- Reimagined the dashboard page. Made the UI user friendly. 
-- Migrated the whole project from Firebase to Supabase, which includes:
-   - Migrated Authentication
-   - Migrated User tables and information
-   - Migrated all map tables
-   - Migrated creating, editing, and map deletion
-   - Migrated and improved real-time as part of the project.
-- Fixed the continuous mouse updates in Realtime. Whenever a user moves his mouse, a great sheer amount of updates (thousands of updates per mouse move) were sent to the Realtime database, which caused using too much quota.
-Mouse updates are now less frequent, and much smoother than before.
-- Add restrictions for editors to delete the owner's map. In the original project, editors whom joined a certain mindmap, can easily delete it and it would delete the entire mindmap from the database which would also delete it for the owner.
-   - Added a restriction that only the owner can delete a map he created.
-   - Added a restriction that editors cannot try and delete a map they didn't create.
-- Added a demo feature, "Online" and "Offline" feature for users. A user can now check who's currently inside his map. If x amount of users are joined in one map, then there's a participants list that shows all users.
-   - Added "Online" tag, for users that are currently inside the current map.
-   - Users appear "Online" iff the user is inside the current map.
-   - A user would appear "Offline" if he's not in the current map, regardless if he's Online on the App/Website.
-   - Not yet implemented in Realtime.
-- Added email confirmation before login. No session accesss before confirming your email.
-- Added a password reset functionality. (Password reset was a placeholder in the original Firebase project).
-   - Users can now reset their passwords.
-- Added a one-time-login magic link, that allows the user to login in from a link sent directly to his email.
+The real-time collaboration system relied entirely on Firebase database writes/reads, resulting in lag, quota issues, and poor performance.
 
-## Background and Motivation
+The goal of this new version was to fully redesign the project from the ground up, migrate it to Supabase, fix all of the broken and missing features, improve performance, build a new UI, design a better UX, and build a modern real-time environment to deploy a production project later.
 
- This project was developed as part of my studies for my degree at the university of Haifa, under the supervision of Professor Roi Poranne  and Professor Yotam Hod. The goal of MindMapProject is to create an interactive real-time mind mapping tool that enables users to visually organize their thoughts, structure ideas, and collaborate efficiently.
-
-With Firebase's real-time database and Firestore, the project ensures instant updates, allowing multiple users to work on a mind map simultaneously. This project leverages JavaScript and Firebase for a smooth and responsive user experience.
+The project now operates on a stronger foundation, with a new architecture, a new real-time engine that uses Supabase built in sockets, new UI/UX, and new features that follow a modern 2025 UI/UX.
 
 
-## Project Overview
+# Project Overview
 
-The MindMapProject provides a real-time collaborative platform where users can create, edit, and manage mind maps dynamically. The system allows multiple users to work together in real time, ensuring an interactive and seamless experience. Users can add descriptions, rename nodes and edges, attach links, and manage access through unique map IDs.
+ideaMapper is a real-time collaborative mind-mapping web application where multiple users can create, join, and work on shared maps simultaneously.
 
-Key functionalities include:
+Users can:
 
-Real-time collaboration: Instant updates with Firebase Realtime Database.  
-Access control with unique Map IDs: Ensuring only authorized users can join specific maps.  
-User authentication: Secure login and account management.  
-Visualization & organization tools: Drag-and-drop node positioning, renaming, linking, and more.  
-Live participant tracking: See who is currently working on the mind map.  
-Cloud synchronization: Auto-save and retrieval of mind maps from Firebase.  
+Create and organize ideas visually
 
-This tool is designed for students, professionals, and teams who need a structured approach to brainstorming, project planning, and knowledge management.
+Move, rename, and customize nodes
 
-## Features :
+Collaborate with others in real-time with no lag
 
-Real-Time Editing : Instant updates with Firebase Realtime Database  
+Track who is online inside each map (realtime using Supabase broadcast)
 
-User Registration/Login : Secure authentication with Firebase 
+Control permissions and map ownership
 
-Mind Map Creation : Add, edit, and delete nodes and edges dynamically  
+Customize canvas appearance (Colors, to grid type and grid color)
 
-Join a Map with a Unique ID : Users can join an existing mind map by entering its unique map ID 
+Manage their account and subscription plan
 
-View Active Participants : Users can see all participants currently working on the map  
+Navigate maps using a built-in minimap
 
-Live Presence Updates : Users can see real-time activity when others add, edit, move, or delete nodes  
+The application is powered by:
 
-Drag-and-Drop Nodes : Organize ideas with a smooth UI 
+Supabase Authentication (email/password, magic links)
 
-Auto-Save & Cloud Sync : Data is automatically stored in Firebase  
+Supabase Realtime Broadcast (WebSocket-based collaboration)
 
-Collaboration Support : Multiple users can work on the same mind map 
+Supabase Postgres + RLS (secure, permission-controlled storage)
 
-Custom Themes : The users can color the edges/nodes in the map and they can choose specific type of edges to connect the nodes, they can custom their maps the way they like   
+ReactFlow for graph visualization
 
-Unique Map ID System : Every mind map has a unique ID, ensuring that only authorized users can access and edit the map  
+This version represents a full migration from Firebase to Supabase, along with a full UI/UX redesign and implementation of all previously incomplete features.
 
-Descriptions for Nodes and Maps : Each node can have a detailed description, and the entire map can also have an overview description  
+# Features
 
-Renaming Nodes and Edges : Users can rename nodes and edges dynamically to refine their mind maps  
+## 🔐 Authentication & Account Management
 
-Adding Links to Nodes : Each node can include a clickable link to external resources or references  
+✔ Email/Password Authentication (Supabase)
+✔ Required Email Confirmation
 
-Profile Page : Displays user information and provides editing options  
+Users must verify their email before gaining access and granting them a session in the backend.
 
-Logout and Password Reset : Options for users to log out and reset their passwords  
+✔ Password Reset
+
+Fully implemented password recovery flow (non-functional in the old version).
+
+✔ Magic Link Login
+
+Users can log in using a secure one-time link sent to their email.
+
+✔ Profile Page
+
+View and edit profile
+
+Upload profile picture (Supabase Storage)
 
 
+## 🧭 Dashboard & Maps Management
+✔ Fully redesigned dashboard UI/UX
 
-##  Tech Stack
-- React (JavaScript, HTML, CSS) 
-- Supabase (Authentication, Database, Realtime, RLS)  
-- Development Tools: VSCode, Photoshop for designs, Git, Github
+Modern layout, smoother navigation, and improved usability.
+
+✔ Map Cards with full metadata:
+
+Map name
+
+Description
+
+Author name
+
+“Last updated” timestamp
+
+Beautiful modern presentation
+
+✔ Map actions menu (3-dot hamburger)
+
+Rename map
+
+Edit description
+
+Duplicate map
+
+Delete map
+
+✔ Safe permission system
+
+Only owners can delete their own maps
+
+Editors cannot delete maps they did not create
+
+Prevents destructive actions by non-owners
+
+✔ Subscription system with map limits:
+
+Free Plan → 5 maps
+
+Pro Plan → 20 maps
+
+Unlimited Plan → infinite maps
+
+Integrated UI messages when limits are reached and upgrade options.
+
+✔ New sidebar menu:
+
+Sign out
+
+Profile/account settings
+
+Light/dark mode toggle
+
+Upgrade subscription
+
+User info section
+
+
+## Real-Time Collaboration
+
+All real-time features now use Supabase Realtime Broadcast channels instead of database writes.
+
+✔ Live cursor sharing
+
+Smooth, low-latency cursor position updates for all users.
+
+✔ Adjustable cursor FPS
+
+Users can choose how fast their own cursor animates (1–60 FPS).
+
+✔ Toggle cursor visibility
+
+Hide your own cursor
+
+Hide all other users’ cursors
+
+✔ Real-time node movement
+
+Dragging nodes updates instantly for all connected users.
+
+✔ Real-time online/offline presence (accurate)
+
+Users appear Online the moment they enter the map
+
+Switch to Offline instantly when they leave
+
+No refresh required
+
+✔ Participants list
+
+Shows all users with presence status inside the map.
+
+## 🧩 Mind Map Editing Features
+✔ Drag-and-drop nodes
+✔ Rename nodes
+✔ Add descriptions to maps
+✔ Connect nodes
+✔ Custom edge styles
+✔ Add links to nodes
+
+(Previously listed but not fully functional — now working.)
+
+
+## 🖼 Canvas & UI Customization
+✔ Canvas background options
+
+Dotted grid
+
+Lined grid
+
+No grid
+
+✔ Custom canvas color
+✔ Custom grid color
+✔ Updated node UI
+
+Improved spacing, color scheme, hover effects, and shadows.
+
+## 🗺 Mini-Map Navigation
+✔ Toggle mini-map
+✔ Real-time preview of the entire map
+✔ Click-to-navigate and drag support
+
+Helps users navigate large mind maps easily.
+
+## ☁️ Cloud Features (Supabase Database & RLS)
+✔ Automatic map saving
+✔ Cloud synchronization
+✔ Row-Level Security (RLS)
+
+Ensures that:
+
+A user cannot modify another user’s data
+
+Editors cannot delete maps
+
+All access rules are enforced via SQL policies
+
+✔ Database schema fully migrated to Supabase
+
+Includes detailed SQL migrations in
+sapubase/migrations/20251023180322_remote_schema.sql
+
+
+## 🔧 Performance Fixes and Improvements
+✔ Eliminated high-frequency realtime writes
+
+Old version spammed thousands of writes per mouse movement.
+Now replaced by WebSocket packets + throttled updates.
+
+✔ Faster dashboard loading
+✔ Efficient Supabase queries
+✔ Optimized ReactFlow rendering
+✔ UI animations on login screen
+✔ Cleaner code structure
+
+# Tech Stack
+
+Frontend
+
+React
+
+ReactFlow
+
+JavaScript / JSX
+
+CSS
+
+Backend / Database
+
+Supabase Auth
+
+Supabase Realtime Broadcast
+
+Supabase Postgres
+
+Supabase Storage
+
+Row-Level Security (RLS)
+
+Dev Tools
+
+VSCode
+
+Git / GitHub
+
+Photoshop for design assets
+
+Docker (for local Supabase development)
+
 
 
 ## Installation and Setup
@@ -176,8 +312,6 @@ You need to setup *Supabase*.
 1. Run the server first using "npm start"
 2. Run the client using "npm start"
 
-## You're done! Happy coding!
-
 ## Common Problems:
 - You need to install dependencies in the:
      - The root directory
@@ -193,3 +327,4 @@ You need to setup *Supabase*.
 - This project is being worked on by students in the Semester Project at the University of Haifa.
 - Original project's repo: https://github.com/xCraftLab/HiveMindMap
 
+## You're done! Happy coding!
