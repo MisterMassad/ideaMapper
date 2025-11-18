@@ -4,25 +4,25 @@
 
 https://github.com/user-attachments/assets/68bbaec1-5062-457c-93e4-39e7b8d68137
 
-<img width="2161" height="1233" alt="image" src="https://github.com/user-attachments/assets/489134fb-2a86-4d16-8df5-76748dbd0581" />
+Sign-in page, with changing motivating titles! Using Google, Github, one-time magic link. Reset password
+
 <img width="2407" height="1308" alt="image" src="https://github.com/user-attachments/assets/483974ac-91f9-44c4-b408-4687782b263c" />
 
-
+Sign-up 
 <img width="1777" height="1038" alt="image" src="https://github.com/user-attachments/assets/0d1c62f1-50a7-4169-b0c3-fc59e09d5d0e" />
-
+Dashboard
 <img width="2076" height="1168" alt="image" src="https://github.com/user-attachments/assets/52054edf-cc1a-4e7b-8ed9-335f1fba4649" />
-
+Dark mode dashboard
 <img width="2019" height="1155" alt="image" src="https://github.com/user-attachments/assets/d5745a40-ff68-43c3-8298-a9bca4f941f2" />
-
+Limit Modal
 <img width="649" height="449" alt="image" src="https://github.com/user-attachments/assets/174d76e4-a667-4f0c-b469-468f24624bae" />
-
+Burger Menue with rotating square on the 3-dots
 <img width="364" height="480" alt="image" src="https://github.com/user-attachments/assets/516bc524-736a-416c-849f-dac5e4421db8" />
-
+Inside the map-editor, with light background and dotted black grid.
 <img width="2535" height="1262" alt="image" src="https://github.com/user-attachments/assets/e9ffe247-3772-4c68-8a39-da395071b724" />
-
+The right-menu
 <img width="490" height="1133" alt="image" src="https://github.com/user-attachments/assets/fb80ab00-1bb8-4b99-95a4-745601bb7c93" />
-
-
+Plan upgrading modal
 <img width="673" height="560" alt="image" src="https://github.com/user-attachments/assets/f99f7fd5-dbc3-45b4-9596-70549b12f1c6" />
 
 # Background & Motivation
