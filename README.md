@@ -1,3 +1,16 @@
+# MindMapProject
+
+## Setup and Installation Tutorial - 2.5 minutes tutorial to setup the project successfully 
+
+https://github.com/user-attachments/assets/68bbaec1-5062-457c-93e4-39e7b8d68137
+
+
+<img width="2531" height="1304" alt="Main_page_1" src="https://github.com/user-attachments/assets/1d1d3644-6449-4be9-b44d-67a8ef69d474" />
+
+<img width="1488" height="1014" alt="Sign_up_page_1" src="https://github.com/user-attachments/assets/99d2e672-c878-44c2-aed3-4e88f5bb562c" />
+
+<img width="2010" height="1308" alt="Dashboard_page_1" src="https://github.com/user-attachments/assets/a1141fa2-4068-4ae9-aa30-8230a5a53c88" />
+
 # Background & Motivation
 
 The original version of the project was built using Firebase and implemented a basic collaborative mind-mapping environment. Although it was functional, it had many limitations.:
