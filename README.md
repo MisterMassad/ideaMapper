@@ -63,222 +63,170 @@ This version represents a full migration from Firebase to Supabase, along with a
 
 ## 🔐 Authentication & Account Management
 
-✔ Email/Password Authentication (Supabase)
-✔ Required Email Confirmation
-
+- Email/Password Authentication (Supabase)
+- Required Email Confirmation
 Users must verify their email before gaining access and granting them a session in the backend.
 
-✔ Password Reset
-
+- Password Reset
 Fully implemented password recovery flow (non-functional in the old version).
 
-✔ Magic Link Login
-
+- Magic Link Login
 Users can log in using a secure one-time link sent to their email.
 
-✔ Profile Page
-
-View and edit profile
-
-Upload profile picture (Supabase Storage)
+- Profile Page
+   - View and edit profile
+   - Upload profile picture (Supabase Storage)
 
 
 ## 🧭 Dashboard & Maps Management
-✔ Fully redesigned dashboard UI/UX
+- Fully redesigned dashboard UI/UX
+   - Modern layout, smoother navigation, and improved usability.
 
-Modern layout, smoother navigation, and improved usability.
+- Map Cards with full metadata:
+   1. Map name
+   2. Description
+   3. Author name
+   4. “Last updated” timestamp
+   5. Beautiful modern presentation
 
-✔ Map Cards with full metadata:
+- Map actions menu (3-dot hamburger)
+   1. Rename map
+   2. Edit description
+   3. Duplicate map
+   4. Delete map
 
-Map name
+- Safe permission system
+   - Only owners can delete their own maps
+   - Editors cannot delete maps they did not create
+   - Prevents destroying others' work
 
-Description
+## Subscription system with map limits:
 
-Author name
+- Introudced 3 plans:
+   - Free (Limit of 5 maps)
+   - Pro (Limit of 20 maps)
+   - Unlimited (No limit)
 
-“Last updated” timestamp
+- Integrated UI messages when limits are reached and upgrade options.
 
-Beautiful modern presentation
-
-✔ Map actions menu (3-dot hamburger)
-
-Rename map
-
-Edit description
-
-Duplicate map
-
-Delete map
-
-✔ Safe permission system
-
-Only owners can delete their own maps
-
-Editors cannot delete maps they did not create
-
-Prevents destructive actions by non-owners
-
-✔ Subscription system with map limits:
-
-Free Plan → 5 maps
-
-Pro Plan → 20 maps
-
-Unlimited Plan → infinite maps
-
-Integrated UI messages when limits are reached and upgrade options.
-
-✔ New sidebar menu:
-
-Sign out
-
-Profile/account settings
-
-Light/dark mode toggle
-
-Upgrade subscription
-
-User info section
+- New sidebar menu:
+   1. Sign out
+   2. Profile/account settings
+   3. Light/dark mode toggle
+   4. Upgrade subscription
+   5. User info section
 
 
 ## Real-Time Collaboration
 
-All real-time features now use Supabase Realtime Broadcast channels instead of database writes.
+All real-time features now use Supabase Realtime Broadcast channels instead of database writes and pulls which consumed a lot of quota previously.
 
-✔ Live cursor sharing
+- Live cursor sharing
+   - Smooth, low-latency cursor position updates for all users.
 
-Smooth, low-latency cursor position updates for all users.
+- Adjustable cursor FPS
+   - Users can choose how fast their own cursor animates (1–60 FPS).
 
-✔ Adjustable cursor FPS
+- Toggle cursor visibility
+   1. Hide your own cursor
+   2. Hide all other users’ cursors
 
-Users can choose how fast their own cursor animates (1–60 FPS).
+- Real-time node movement
+   - Dragging nodes updates instantly for all connected users.
 
-✔ Toggle cursor visibility
+- Real-time online/offline presence (accurate)
+   - Users appear Online the moment they enter the map
+   - Switch to Offline instantly when they leave
+   - No refresh required
 
-Hide your own cursor
+- Participants list
+   - Shows all users with presence status inside the map.
 
-Hide all other users’ cursors
-
-✔ Real-time node movement
-
-Dragging nodes updates instantly for all connected users.
-
-✔ Real-time online/offline presence (accurate)
-
-Users appear Online the moment they enter the map
-
-Switch to Offline instantly when they leave
-
-No refresh required
-
-✔ Participants list
-
-Shows all users with presence status inside the map.
-
-## 🧩 Mind Map Editing Features
-✔ Drag-and-drop nodes
-✔ Rename nodes
-✔ Add descriptions to maps
-✔ Connect nodes
-✔ Custom edge styles
-✔ Add links to nodes
-
-(Previously listed but not fully functional — now working.)
+## Mind Map Editing Features
+- Drag-and-drop nodes
+- Rename nodes
+- Add descriptions to maps
+- Connect nodes
+- Custom edge styles
+- Add links to nodes
 
 
-## 🖼 Canvas & UI Customization
-✔ Canvas background options
+## Canvas & UI Customization
+- Canvas background options
+   1. Dotted grid
+   2. Lined grid
+   3. No grid
 
-Dotted grid
+- Custom canvas color
+- Custom grid color
+- Updated node UI
 
-Lined grid
+Improved spacing, introduced a new default color scheme, hover effects, and shadows.
 
-No grid
-
-✔ Custom canvas color
-✔ Custom grid color
-✔ Updated node UI
-
-Improved spacing, color scheme, hover effects, and shadows.
-
-## 🗺 Mini-Map Navigation
-✔ Toggle mini-map
-✔ Real-time preview of the entire map
-✔ Click-to-navigate and drag support
+## Mini-Map 
+- Toggle mini-map
+- Real-time preview of the entire map
+- Click-to-navigate and drag support
 
 Helps users navigate large mind maps easily.
 
-## ☁️ Cloud Features (Supabase Database & RLS)
-✔ Automatic map saving
-✔ Cloud synchronization
-✔ Row-Level Security (RLS)
+## Cloud Features (Supabase Database & RLS)
+- Automatic map saving
+- Cloud synchronization
+- Row-Level Security (RLS)
 
 Ensures that:
 
-A user cannot modify another user’s data
+- A user cannot modify another user’s data
+- Editors cannot delete maps
+- All access rules are enforced via SQL policies
 
-Editors cannot delete maps
+- Database schema fully migrated to Supabase
 
-All access rules are enforced via SQL policies
+## - Performance Fixes and Improvements
+- Eliminated the need to save/write to db for realtime updates, and introduced Supabase built-in sockets for realtime: Supabase broadcast.
 
-✔ Database schema fully migrated to Supabase
+The Old version sends thousands of live cursor updated to the database. I replaced it with WebSocket packets and throttled the update rate. 
 
-Includes detailed SQL migrations in
-sapubase/migrations/20251023180322_remote_schema.sql
+- Faster dashboard loading
+- Efficient Supabase queries
+- Optimized ReactFlow rendering
+- UI animations on login screen
+- Cleaner code structure
 
 
-## 🔧 Performance Fixes and Improvements
-✔ Eliminated high-frequency realtime writes
-
-Old version spammed thousands of writes per mouse movement.
-Now replaced by WebSocket packets + throttled updates.
-
-✔ Faster dashboard loading
-✔ Efficient Supabase queries
-✔ Optimized ReactFlow rendering
-✔ UI animations on login screen
-✔ Cleaner code structure
+## Login and Sign-up
+- New UI/UX
+- Ability to sign-in using email/password, google, or github.
+- Added a mind-map interactive background that the user can interact with in the login/signup page.
+- Reset password.
+- One time magic link sign in by email.
 
 # Tech Stack
 
-Frontend
+- Frontend
+   1. React
+   2. ReactFlow
+   3. JavaScript / JSX
+   4. CSS
 
-React
+- Backend / Database
 
-ReactFlow
-
-JavaScript / JSX
-
-CSS
-
-Backend / Database
-
-Supabase Auth
-
-Supabase Realtime Broadcast
-
-Supabase Postgres
-
-Supabase Storage
-
-Row-Level Security (RLS)
-
-Dev Tools
-
-VSCode
-
-Git / GitHub
-
-Photoshop for design assets
-
-Docker (for local Supabase development)
+1. Supabase Auth
+2. Supabase Realtime Broadcast
+3. Supabase Postgres
+4. Supabase Storage
+5. Row-Level Security (RLS)
+6. VSCode
+7. Git / GitHub
+8. Photoshop for design assets
+9. Docker (Mainly for supabase SQL exporting (I exported the .sql for Supabase using Docker))
 
 
 
 ## Installation and Setup
 
-The project is now migrated to Supabase. Meaning, we don't need Firebase to run the project.
-You need to setup *Supabase*.
+You can clone the project and use it, updates are sent to my Supabase cloud. If you want to develop, update, or edit the project, especially from the database side, then you need to setup your own *Supabase*.
 
 ### Step 1: Clone the repo:
 1. From your cmd, in your chosen location, clone the repository using "git clone https://github.com/MisterMassad/ideaMapper"
