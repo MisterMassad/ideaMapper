@@ -4,12 +4,41 @@
 
 https://github.com/user-attachments/assets/68bbaec1-5062-457c-93e4-39e7b8d68137
 
+Sign-in page, with changing motivating titles! Using Google, Github, one-time magic link. Reset password
 
-<img width="2531" height="1304" alt="Main_page_1" src="https://github.com/user-attachments/assets/1d1d3644-6449-4be9-b44d-67a8ef69d474" />
+<img width="2407" height="1308" alt="image" src="https://github.com/user-attachments/assets/483974ac-91f9-44c4-b408-4687782b263c" />
 
-<img width="1488" height="1014" alt="Sign_up_page_1" src="https://github.com/user-attachments/assets/99d2e672-c878-44c2-aed3-4e88f5bb562c" />
+Sign-up 
 
-<img width="2010" height="1308" alt="Dashboard_page_1" src="https://github.com/user-attachments/assets/a1141fa2-4068-4ae9-aa30-8230a5a53c88" />
+<img width="1777" height="1038" alt="image" src="https://github.com/user-attachments/assets/0d1c62f1-50a7-4169-b0c3-fc59e09d5d0e" />
+
+Dashboard
+
+<img width="2076" height="1168" alt="image" src="https://github.com/user-attachments/assets/52054edf-cc1a-4e7b-8ed9-335f1fba4649" />
+
+Dark mode dashboard
+
+<img width="2019" height="1155" alt="image" src="https://github.com/user-attachments/assets/d5745a40-ff68-43c3-8298-a9bca4f941f2" />
+
+Limit Modal
+
+<img width="649" height="449" alt="image" src="https://github.com/user-attachments/assets/174d76e4-a667-4f0c-b469-468f24624bae" />
+
+Burger Menue with rotating square on the 3-dots
+
+<img width="364" height="480" alt="image" src="https://github.com/user-attachments/assets/516bc524-736a-416c-849f-dac5e4421db8" />
+
+Inside the map-editor, with light background and dotted black grid.
+
+<img width="2535" height="1262" alt="image" src="https://github.com/user-attachments/assets/e9ffe247-3772-4c68-8a39-da395071b724" />
+
+The right-menu
+
+<img width="490" height="1133" alt="image" src="https://github.com/user-attachments/assets/fb80ab00-1bb8-4b99-95a4-745601bb7c93" />
+
+Plan upgrading modal
+
+<img width="673" height="560" alt="image" src="https://github.com/user-attachments/assets/f99f7fd5-dbc3-45b4-9596-70549b12f1c6" />
 
 # Background & Motivation
 
@@ -74,7 +103,7 @@ This version represents a full migration from Firebase to Supabase, along with a
 
 # Features
 
-## 🔐 Authentication & Account Management
+## Authentication & Account Management
 
 - Email/Password Authentication (Supabase)
 - Required Email Confirmation
@@ -91,7 +120,7 @@ Users can log in using a secure one-time link sent to their email.
    - Upload profile picture (Supabase Storage)
 
 
-## 🧭 Dashboard & Maps Management
+## Dashboard & Maps Management
 - Fully redesigned dashboard UI/UX
    - Modern layout, smoother navigation, and improved usability.
 
