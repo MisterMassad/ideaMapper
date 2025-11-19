@@ -1089,7 +1089,30 @@ const MapEditor = ({ mapId }) => {
       >
         <h3 style={{ color: "#2C5F2D" }}>Learning Space Details</h3>
 
-        {/* Canvas Settings (per-user) */}
+
+        {/* Home Page Button */}
+        <div style={{ marginBottom: "10px", textAlign: "center" }}>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary"
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#4caf50",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              fontSize: "1rem",
+              fontWeight: "bold",
+              cursor: "pointer",
+              boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            Home Page
+          </button>
+        </div>
+        {/* End of Home Page Button */}
+
+        {/* Canvas Settings */}
         <div className="me-canvas-settings" style={{ marginBottom: 12 }}>
           <div className="me-field">
             <span className="me-label">Background</span>
@@ -1148,41 +1171,14 @@ const MapEditor = ({ mapId }) => {
             />
           </div>
         </div>
+        {/* End of Canvas Settings */}
 
-        <div style={{ marginBottom: "10px", textAlign: "center" }}>
-          <button
-            onClick={() => window.location.reload()}
-            className="btn-primary"
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#4caf50",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              fontSize: "1rem",
-              fontWeight: "bold",
-              cursor: "pointer",
-              boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            Home Page
-          </button>
-        </div>
+
 
 
         {/* Cursor settings */}
-        <div className="me-field" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <input
-            id="toggle-my-cursor"
-            type="checkbox"
-            checked={showMyCursor}
-            onChange={(e) => setShowMyCursor(e.target.checked)}
-          />
-          <label htmlFor="toggle-my-cursor" className="me-label" style={{ margin: 0 }}>
-            Show my cursor
-          </label>
-        </div>
 
+        {/* FPS Slider Settings */}
         <div className="me-field">
           <label className="me-label">Cursor FPS: {cursorFps}</label>
           <input
@@ -1199,6 +1195,19 @@ const MapEditor = ({ mapId }) => {
           </small>
         </div>
 
+
+        <div className="me-field" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+          <input
+            id="toggle-my-cursor"
+            type="checkbox"
+            checked={showMyCursor}
+            onChange={(e) => setShowMyCursor(e.target.checked)}
+          />
+          <label htmlFor="toggle-my-cursor" className="me-label" style={{ margin: 0 }}>
+            Show my cursor
+          </label>
+        </div>
+
         {/* Cursor visibility for other cursors */}
         <div className="me-field" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
           <input
@@ -1209,6 +1218,23 @@ const MapEditor = ({ mapId }) => {
           />
           <label htmlFor="toggle-others-cursor" className="me-label" style={{ margin: 0 }}>
             Show others’ cursors
+          </label>
+        </div>
+
+
+        {/* MiniMap toggle */}
+        <div
+          className="me-field"
+          style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}
+        >
+          <input
+            id="toggle-minimap"
+            type="checkbox"
+            checked={minimapEnabled}
+            onChange={(e) => setMinimapEnabled(e.target.checked)}
+          />
+          <label htmlFor="toggle-minimap" className="me-label" style={{ margin: 0 }}>
+            Show MiniMap
           </label>
         </div>
 
@@ -1250,21 +1276,7 @@ const MapEditor = ({ mapId }) => {
           <div className="me-chip">{lastEdited}</div>
         </div>
 
-        {/* MiniMap toggle */}
-        <div
-          className="me-field"
-          style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}
-        >
-          <input
-            id="toggle-minimap"
-            type="checkbox"
-            checked={minimapEnabled}
-            onChange={(e) => setMinimapEnabled(e.target.checked)}
-          />
-          <label htmlFor="toggle-minimap" className="me-label" style={{ margin: 0 }}>
-            Show MiniMap
-          </label>
-        </div>
+
 
         {/* Node details panel */}
         <div
