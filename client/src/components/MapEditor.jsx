@@ -1173,9 +1173,6 @@ const MapEditor = ({ mapId }) => {
         </div>
         {/* End of Canvas Settings */}
 
-
-
-
         {/* Cursor settings */}
 
         {/* FPS Slider Settings */}
